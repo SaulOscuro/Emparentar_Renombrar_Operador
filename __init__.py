@@ -155,6 +155,27 @@ def procesar_jerarquia_puerta_closet(context: bpy.types.Context, objeto_raiz_pue
     nombre_marco_closet = f"{nombre_base_puerta_actual_closet}_frame0"
     objeto_raiz_puerta_closet_original.name = nombre_marco_closet
     emparentar_con_operador_seguro(context, objeto_raiz_puerta_closet_original, objeto_padre_wall)
+
+    patron_prefijo_closet = re.compile(
+        r'^(?:wall|interiorwall|ceiling)\d+_closet\d+_door\d+_(.+)$',
+        re.IGNORECASE,
+    )
+
+    def iterar_hijos_recursivos(objeto):
+        for hijo in objeto.children:
+            yield hijo
+            yield from iterar_hijos_recursivos(hijo)
+
+    def actualizar_prefijo_closet(objeto):
+        match = patron_prefijo_closet.match(objeto.name)
+        if not match:
+            return
+        nuevo_nombre = f"{nombre_base_puerta_actual_closet}_{match.group(1)}"
+        if objeto.name != nuevo_nombre:
+            objeto.name = nuevo_nombre
+
+    for hijo in iterar_hijos_recursivos(objeto_raiz_puerta_closet_original):
+        actualizar_prefijo_closet(hijo)
     
     # --- Paso 3: Renombrar paneles y hardware ---
     for panel_original in hijos_originales_paneles:
