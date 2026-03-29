@@ -12,6 +12,8 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si el objeto no tiene hijos, lo trata como un primitivo.
 #
+# v3.3.0: Añadida lógica para convertir duplicados wall/interiorwall/ceiling
+#         en sub-walls del padre activo usando el formato "<padre>_wallN".
 # v3.2.0: Añadido manejo de hardware para los paneles de las puertas de closet.
 #         Ajustada la captura de hijos para el hardware en jerarquías.
 # v3.1.0: Añadida jerarquía para puertas de closet con nomenclatura específica.
@@ -24,7 +26,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 bl_info = {
     "name": "Emparentador y Renombrador Inteligente (Unificado)",
     "author": "Tu Nombre (con asistencia de Gemini)",
-    "version": (3, 2, 9),
+    "version": (3, 3, 0),
     "blender": (4, 2, 0),
     "location": "View3D > Object Menu > Emparentar y Renombrar Inteligente",
     "description": "Emparenta y renombra primitivos, puertas estándar (con hardware) o puertas de closet (con paneles y hardware).",
@@ -305,8 +307,21 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                     jerarquias_omitidas +=1
                     continue
                 
-                # Mantener enchufeN/apagadorN (limpiar .###); si hay conflicto, buscar siguiente indice
+                # Convertir duplicados de wall/interiorwall/ceiling en sub-walls del padre activo.
                 nombre_obj = obj_individual.name
+                nombre_obj_limpio = nombre_obj.strip() if nombre_obj != nombre_obj.strip() else nombre_obj
+                if re.match(r'^(?:wall|interiorwall|ceiling)\d+\.\d+$', nombre_obj_limpio, re.IGNORECASE):
+                    indice_wall = encontrar_siguiente_indice(
+                        objeto_padre,
+                        f"{objeto_padre.name}_wall",
+                        exclude_obj=obj_individual,
+                    )
+                    obj_individual.name = f"{objeto_padre.name}_wall{indice_wall}"
+                    emparentar_con_operador_seguro(context, obj_individual, objeto_padre)
+                    count_primitivos += 1
+                    continue
+
+                # Mantener enchufeN/apagadorN (limpiar .###); si hay conflicto, buscar siguiente indice
                 match_especial = nombre_especial_re.match(nombre_obj)
                 if not match_especial and nombre_obj != nombre_obj.strip():
                     # Tolerar espacios accidentales sin cambiar la intencion del nombre.
