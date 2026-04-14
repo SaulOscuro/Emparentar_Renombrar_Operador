@@ -12,6 +12,12 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si el objeto no tiene hijos, lo trata como un primitivo.
 #
+# v3.3.4: Añadidas nomenclaturas especiales para lampemission y lampmetal.
+# v3.3.3: Añadidas nomenclaturas especiales para black, rejilla y rejillas.
+# v3.3.2: Añadido filtro en el procesamiento masivo para ignorar objetos que ya
+#         pertenecen a jerarquías válidas de puertas o closets.
+# v3.3.1: Corregido el reconocimiento de sub-walls ya nombrados para que no
+#         caigan en la lógica de primitive al emparentarlos de nuevo.
 # v3.3.0: Añadida lógica para convertir duplicados wall/interiorwall/ceiling
 #         en sub-walls del padre activo usando el formato "<padre>_wallN".
 # v3.2.0: Añadido manejo de hardware para los paneles de las puertas de closet.
@@ -26,7 +32,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 bl_info = {
     "name": "Emparentador y Renombrador Inteligente (Unificado)",
     "author": "Tu Nombre (con asistencia de Gemini)",
-    "version": (3, 3, 0),
+    "version": (3, 3, 4),
     "blender": (4, 2, 0),
     "location": "View3D > Object Menu > Emparentar y Renombrar Inteligente",
     "description": "Emparenta y renombra primitivos, puertas estándar (con hardware) o puertas de closet (con paneles y hardware).",
@@ -89,6 +95,35 @@ def emparentar_con_operador_seguro(context: bpy.types.Context, child_obj: bpy.ty
     parent_obj.select_set(True)
     context.view_layer.objects.active = parent_obj
     bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+
+def pertenece_a_jerarquia_puerta_o_closet(objeto: bpy.types.Object) -> bool:
+    """
+    Detecta si un objeto ya forma parte de una jerarquia valida de puerta o closet.
+    Se usa para excluir estos objetos del procesamiento masivo y evitar
+    reemparentados o renombrados accidentales.
+    """
+    patron_componente = re.compile(
+        r'^(?:wall|interiorwall|ceiling)\d+_(?:'
+        r'door\d+_(?:frame\d+|leftpanel\d+(?:_hardware\d+)?|rightpanel\d+(?:_hardware\d+)?|door\d+|leftpanel\d+_door\d+|rightpanel\d+_door\d+)'
+        r'|closet\d+_door\d+_(?:frame\d+|closedleftpanel\d+(?:_hardware\d+)?|openleftpanel\d+(?:_hardware\d+)?|closedrightpanel\d+(?:_hardware\d+)?|openrightpanel\d+(?:_hardware\d+)?|door\d+|closedleftpanel\d+_door\d+|closedrightpanel\d+_door\d+|openleftpanel\d+_door\d+|openrightpanel\d+_door\d+)'
+        r')(?:\.\d+)?$',
+        re.IGNORECASE,
+    )
+    nombre_objeto = objeto.name.strip()
+    if patron_componente.match(nombre_objeto):
+        return True
+
+    patron_raiz = re.compile(
+        r'^(?:wall|interiorwall|ceiling)\d+_(?:door\d+_frame\d+|closet\d+_door\d+_frame\d+)(?:\.\d+)?$',
+        re.IGNORECASE,
+    )
+    ancestro = objeto.parent
+    while ancestro:
+        if patron_raiz.match(ancestro.name.strip()):
+            return True
+        ancestro = ancestro.parent
+
+    return False
 
 def procesar_jerarquia_puerta(context: bpy.types.Context, objeto_raiz_puerta_original: bpy.types.Object, objeto_padre_wall: bpy.types.Object):
     """
@@ -273,11 +308,12 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
         else: # Procesar como primitivos o múltiples objetos sin hijos (o advertir si tienen hijos)
             count_primitivos = 0
             jerarquias_omitidas = 0
+            jerarquias_existentes_ignoradas = 0
             # Patron especial para mantener nomenclaturas definidas y limpiar sufijo .###.
             nombre_especial_re = re.compile(
                 r'^(?:'
                 r'(?:wall|interiorwall|ceiling)\d+_(?:'
-                r'alacena\d+|apagador\d+|board\d+|closet\d+'
+                r'alacena\d+|apagador\d+|black\d+|board\d+|closet\d+'
                 r'|closet\d+_door\d+_frame\d+'
                 r'|closet\d+_door\d+_closedleftpanel\d+(?:_hardware\d+)?'
                 r'|closet\d+_door\d+_openleftpanel\d+(?:_hardware\d+)?'
@@ -291,14 +327,18 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                 r'|coladera\d+|colgador\d+|door\d+|glass\d+'
                 r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
                 r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-                r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
-                r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
+                r'|jaladera\d+|lampara\d+|lamp\d+|lampemission\d+|lampmetal\d+|lavabo\d+|luz\d+|mirror\d+'
+                r'|perchero\d+|regadera\d+|rejilla\d+|rejillas\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|wall\d+|window\d+|collider\d+|\d+'
                 r')'
                 r'|toallero_colgador\d+'
                 r')(?:\.\d+)?$',
                 re.IGNORECASE,
             )
             for obj_individual in objetos_a_procesar:
+                if pertenece_a_jerarquia_puerta_o_closet(obj_individual):
+                    jerarquias_existentes_ignoradas += 1
+                    continue
+
                 if obj_individual.children:
                     # Si estamos en este bloque, significa que o se seleccionaron múltiples objetos,
                     # y este en particular tiene hijos, o se seleccionó uno solo sin hijos (que se procesaría abajo).
@@ -356,9 +396,11 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
             
             if count_primitivos > 0:
                 self.report({'INFO'}, f"Se procesaron {count_primitivos} objetos primitivos.")
-            if jerarquias_omitidas == 0 and count_primitivos == 0 and not (len(objetos_a_procesar) == 1 and objetos_a_procesar[0].children) :
+            if jerarquias_existentes_ignoradas > 0:
+                self.report({'INFO'}, f"Se ignoraron {jerarquias_existentes_ignoradas} objetos ya pertenecientes a puertas/closets.")
+            if jerarquias_omitidas == 0 and jerarquias_existentes_ignoradas == 0 and count_primitivos == 0 and not (len(objetos_a_procesar) == 1 and objetos_a_procesar[0].children) :
                  self.report({'WARNING'}, "No se procesó ningún objeto primitivo válido.")
-            elif jerarquias_omitidas > 0 and count_primitivos == 0:
+            elif jerarquias_omitidas > 0 and jerarquias_existentes_ignoradas == 0 and count_primitivos == 0:
                  self.report({'WARNING'}, "No se procesaron primitivos. Se omitieron jerarquías (procesar de una en una).")
 
 
