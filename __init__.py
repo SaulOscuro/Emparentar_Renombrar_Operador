@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si el objeto no tiene hijos, lo trata como un primitivo.
 #
+# v3.3.4: Añadidas nomenclaturas especiales para lampemission y lampmetal.
 # v3.3.3: Añadidas nomenclaturas especiales para black, rejilla y rejillas.
 # v3.3.2: Añadido filtro en el procesamiento masivo para ignorar objetos que ya
 #         pertenecen a jerarquías válidas de puertas o closets.
@@ -31,7 +32,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 bl_info = {
     "name": "Emparentador y Renombrador Inteligente (Unificado)",
     "author": "Tu Nombre (con asistencia de Gemini)",
-    "version": (3, 3, 3),
+    "version": (3, 3, 4),
     "blender": (4, 2, 0),
     "location": "View3D > Object Menu > Emparentar y Renombrar Inteligente",
     "description": "Emparenta y renombra primitivos, puertas estándar (con hardware) o puertas de closet (con paneles y hardware).",
@@ -326,7 +327,7 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                 r'|coladera\d+|colgador\d+|door\d+|glass\d+'
                 r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
                 r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-                r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
+                r'|jaladera\d+|lampara\d+|lamp\d+|lampemission\d+|lampmetal\d+|lavabo\d+|luz\d+|mirror\d+'
                 r'|perchero\d+|regadera\d+|rejilla\d+|rejillas\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|wall\d+|window\d+|collider\d+|\d+'
                 r')'
                 r'|toallero_colgador\d+'
