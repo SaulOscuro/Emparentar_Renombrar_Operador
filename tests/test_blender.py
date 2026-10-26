@@ -228,19 +228,20 @@ class ParentingTests(unittest.TestCase):
 
     def test_approved_display_families_and_roots(self):
         from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
-        self.assertEqual(len(DISPLAY_FAMILIES), 32)
+        self.assertEqual(len(DISPLAY_FAMILIES), 35)
         self.assertNotIn('primitive', DISPLAY_FAMILIES)
         for family in DISPLAY_FAMILIES:
             for parent in ('wall0', 'interiorwall1', 'floor2', 'ceiling3'):
                 with self.subTest(parent=parent, family=family):
                     self.assertIsNone(unsupported_reason(f'{parent}_{family}0'))
-        for name in ('wall0', 'interiorwall1', 'floor2', 'ceiling3', 'toallero_colgador0', 'wall2_chrome4.001'):
+        for name in ('wall0', 'interiorwall1', 'floor2', 'ceiling3', 'toallero_colgador0', 'wall2_chrome4.001',
+                     'ceiling0_black3', 'wall1_lampmetal0', 'wall1_lampemission0'):
             self.assertIsNone(unsupported_reason(name), name)
 
     def test_unknown_and_excluded_names_are_warnings(self):
         check = addon.name_overlays.unsupported_reason
         for name in ('Cube', 'wall_1', 'wall1_1', 'wall0_Cube', 'wall0_primitive0',
-                     'wall0_Primitive1.001', 'wall0_lampemission0', 'wall0_door0_Cube',
+                     'wall0_Primitive1.001', 'wall0_unknownfamily0', 'wall0_door0_Cube',
                      'wall0_chrome', 'wall0_chrome0garbage', 'wall0_chrome0_unknown0',
                      'wall0_hardware0', 'wall0_notchrome0', ' wall0_chrome0'):
             with self.subTest(name=name):

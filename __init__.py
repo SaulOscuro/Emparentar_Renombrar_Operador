@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.6.1: Admite black, lampmetal y lampemission en emparentado y visores.
 # v3.6.0: Visores de nombres y avisos rojos para familias no admitidas.
 # v3.5.0: Extension para Blender 4.2 con distribucion mediante repositorio remoto.
 # v3.4.0: Selector de familia para objetos sin regla y sugerencia bathfloor para floorN.

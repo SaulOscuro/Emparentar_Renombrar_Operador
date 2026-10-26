@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.6.0** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.6.1** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -99,10 +99,13 @@ The red overlay validates whole naming structures, not just matching substrings:
   `toallero_colgadorN` exception remain valid. Supported `.001` duplicate suffixes
   on family names retain their existing recognition.
 
-The approved display families are alacena, apagador, bathfloor, board, chrome,
+The approved display families are alacena, apagador, bathfloor, black, board, chrome,
 closet, coladera, colgador, collider, door, enchufe, estufa, faucet, fridge,
-fridge&micro, glass, hvac, jaladera, lamp, lampara, lavabo, luz, mirror, perchero,
+fridge&micro, glass, hvac, jaladera, lamp, lampara, lampemission, lampmetal, lavabo, luz, mirror, perchero,
 regadera, repisa, seat, stuff, trim, vent, wall and window.
+
+Version 3.6.1 adds `black`, `lampmetal` and `lampemission` to both parenting
+and the supported-name overlay list. `primitive` remains highlighted in red.
 
 This checks naming structure; it does not infer object contents or validate their
 actual parenting relationships. Attribution is in `THIRD_PARTY_NOTICES.md`.
@@ -117,14 +120,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.6.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.6.1 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.6.0"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.6.1"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds

@@ -5,10 +5,10 @@ from functools import lru_cache
 # Approved display families. The parenting operator still accepts primitive as
 # its generic fallback; the red overlay deliberately excludes it.
 DISPLAY_FAMILIES = frozenset({
-    'alacena', 'apagador', 'bathfloor', 'board', 'chrome', 'closet',
+    'alacena', 'apagador', 'bathfloor', 'black', 'board', 'chrome', 'closet',
     'coladera', 'colgador', 'collider', 'door', 'enchufe', 'estufa',
     'faucet', 'fridge', 'fridge&micro', 'glass', 'hvac', 'jaladera',
-    'lamp', 'lampara', 'lavabo', 'luz', 'mirror', 'perchero',
+    'lamp', 'lampara', 'lampemission', 'lampmetal', 'lavabo', 'luz', 'mirror', 'perchero',
     'regadera', 'repisa', 'seat', 'stuff', 'trim', 'vent', 'wall', 'window',
 })
 
@@ -30,10 +30,10 @@ NOMBRE_ESPECIAL_RE = re.compile(
     r'|closet\d+_door\d+_door\d+'
     r'|closet\d+_door\d+_openleftpanel\d+_door\d+'
     r'|closet\d+_door\d+_openrightpanel\d+_door\d+'
-    r'|chrome\d+|coladera\d+|colgador\d+|door\d+|glass\d+'
+    r'|black\d+|chrome\d+|coladera\d+|colgador\d+|door\d+|glass\d+'
     r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
     r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-    r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
+    r'|jaladera\d+|lampara\d+|lamp\d+|lampemission\d+|lampmetal\d+|lavabo\d+|luz\d+|mirror\d+'
     r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
     r'|bathfloor\d+|primitive\d+|wall\d+'
     r')'
@@ -73,4 +73,3 @@ def unsupported_reason(name):
     if NOMBRE_ESPECIAL_RE.fullmatch(name) or NOMBRE_PUERTA_GENERADO_RE.fullmatch(name):
         return None
     return 'Estructura de familia no admitida'
-

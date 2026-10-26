@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "emparentar_renombrar_operador"
-version = "3.6.0"
+version = "3.6.1"
 name = "Emparentar y Renombrar Inteligente"
 tagline = "Emparenta objetos y propone familias segun el padre"
 maintainer = "SaulOscuro"
