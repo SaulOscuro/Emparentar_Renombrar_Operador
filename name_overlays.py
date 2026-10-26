@@ -213,7 +213,7 @@ ERROR_COLOR = (1.0, 0.12, 0.08, 1.0)
 def label_style(name, obj=None):
     """The warning color takes priority when multiple overlays are enabled."""
     from .automatic_tools import warning_for
-    invalid = _OverlayRuntime.invalid_names_enabled and (
+    invalid = (obj is None or obj.type == 'MESH') and _OverlayRuntime.invalid_names_enabled and (
         unsupported_reason(name) is not None or (obj is not None and warning_for(obj)))
     return (f'! {name}', ERROR_COLOR, 1.2) if invalid else (name, NORMAL_COLOR, 1.0)
 

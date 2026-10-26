@@ -18,6 +18,8 @@ def expected_parent(name):
 
 
 def object_issues(obj):
+    if obj.type != 'MESH':
+        return ()
     name = obj.name
     clean = canonical(name)
     issues = []
@@ -39,6 +41,8 @@ def audit_scene(scene, failures=None):
     failures = failures or {}
     report = []
     for obj in sorted(scene.objects, key=lambda item: item.name):
+        if obj.type != 'MESH':
+            continue
         issues = list(object_issues(obj))
         failure = failures.get(obj.as_pointer())
         if failure and failure not in issues:

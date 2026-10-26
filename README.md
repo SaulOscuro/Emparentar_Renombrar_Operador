@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.7.0** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.7.1** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -114,6 +114,12 @@ Attribution is in `THIRD_PARTY_NOTICES.md`.
 
 ## Automatic audit and Live NoDot Rename (3.7.0)
 
+Since **3.7.1**, the audit and red warnings apply only to **mesh objects**.
+Empties, cameras, lights, curves, armatures and other non-mesh types are excluded.
+Their names can still appear in white in the selection/all-name overlays.
+Live NoDot Rename also leaves non-mesh helpers unchanged inside duplicated
+mesh hierarchies. Mesh children remain subject to the normal naming rules.
+
 Both features are enabled by default. No audit or cleanup button is needed.
 They start when the enabled extension loads (including after an update), when
 Blender starts, and after opening another blend. Editing names, creating or
@@ -158,14 +164,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.7.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.7.1 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.0"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.1"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds

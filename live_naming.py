@@ -81,6 +81,8 @@ def _plan_group(root, objects):
         root_suffix = canonical(root.name[match.end():])
     group = [(root, root_suffix)]
     for child in sorted(root.children_recursive, key=lambda item: (_depth(item), item.name)):
+        if child.type != 'MESH':
+            continue
         name = canonical(child.name)
         if name.startswith(old_prefix + '_'):
             group.append((child, name[len(old_prefix):]))

@@ -262,9 +262,9 @@ class ParentingTests(unittest.TestCase):
     def test_red_labels_do_not_require_selection_and_do_not_edit_objects(self):
         overlay = addon.name_overlays
         parent = make_object('wall0')
-        valid = make_object('wall0_chrome0', parent)
-        invalid = make_object('Cube', parent)
-        primitive = make_object('wall0_primitive0', parent)
+        valid = make_mesh('wall0_chrome0', parent)
+        invalid = make_mesh('Cube', parent)
+        primitive = make_mesh('wall0_primitive0', parent)
         select(parent, valid)
         before = [(o, o.name, o.parent, o.matrix_world.copy(), tuple(o.color))
                   for o in bpy.data.objects]
@@ -284,8 +284,8 @@ class ParentingTests(unittest.TestCase):
     def test_warning_priority_when_all_names_and_selection_are_enabled(self):
         overlay = addon.name_overlays
         parent = make_object('floor0')
-        valid = make_object('floor0_bathfloor0', parent)
-        invalid = make_object('wall_1')
+        valid = make_mesh('floor0_bathfloor0', parent)
+        invalid = make_mesh('wall_1')
         overlay._OverlayRuntime.enable_all_names(bpy.context)
         overlay._OverlayRuntime.enable_invalid_names(bpy.context)
         labels = list(overlay.visible_name_labels(bpy.context))
@@ -301,8 +301,8 @@ class ParentingTests(unittest.TestCase):
     def test_rename_reclassifies_and_hidden_objects_are_excluded(self):
         overlay = addon.name_overlays
         parent = make_object('wall0')
-        obj = make_object('Cube', parent)
-        hidden = make_object('Unknown')
+        obj = make_mesh('Cube', parent)
+        hidden = make_mesh('Unknown')
         hidden.hide_set(True)
         bpy.context.view_layer.update()
         overlay._OverlayRuntime.enable_invalid_names(bpy.context)
@@ -366,6 +366,40 @@ def make_mesh(name, parent=None):
 
 class AutomaticTests(ParentingTests):
     # Only the tests declared below are collected separately.
+    def test_non_mesh_helpers_are_excluded_from_audit_red_labels_and_live_rename(self):
+        make_mesh('wall0')
+        root = make_mesh('wall0.001')
+        invalid_mesh = make_mesh('Cube', root)
+        helper_data = (None, bpy.data.cameras.new('TestCamera'),
+                       bpy.data.lights.new('TestLight', 'POINT'),
+                       bpy.data.curves.new('TestCurve', 'CURVE'),
+                       bpy.data.armatures.new('TestArmature'))
+        helpers = []
+        for index, data in enumerate(helper_data):
+            obj = bpy.data.objects.new(f'wall0_stuff{index}.001', data)
+            bpy.context.scene.collection.objects.link(obj)
+            obj.parent = root
+            helpers.append(obj)
+        empty = make_object('Empty')
+        helpers.append(empty)
+        before = {obj: obj.name for obj in helpers}
+        addon.automatic_tools.run_pass()
+        self.assertEqual(root.name, 'wall1')
+        self.assertEqual({obj: obj.name for obj in helpers}, before)
+        report = dict(addon.automatic_tools.report_for(bpy.context.scene))
+        self.assertEqual(set(report), {'Cube'})
+        overlay = addon.name_overlays
+        overlay._OverlayRuntime.enable_invalid_names(bpy.context)
+        for obj in helpers:
+            self.assertEqual(addon.automatic_tools.live_audit.object_issues(obj), ())
+            self.assertFalse(addon.automatic_tools.warning_for(obj))
+            self.assertEqual(overlay.label_style(obj.name, obj), (obj.name, overlay.NORMAL_COLOR, 1.0))
+        self.assertEqual([obj for obj, _ in overlay.visible_name_labels(bpy.context)], [invalid_mesh])
+        overlay._OverlayRuntime.enable_all_names(bpy.context)
+        styles = dict(overlay.visible_name_labels(bpy.context))
+        self.assertEqual(styles[empty][1], overlay.NORMAL_COLOR)
+        self.assertEqual(styles[invalid_mesh][1], overlay.ERROR_COLOR)
+
     def test_live_duplicate_skips_occupied_indices_and_is_idempotent(self):
         root = make_mesh('wall1')
         make_mesh('wall1_lamp0', root)
