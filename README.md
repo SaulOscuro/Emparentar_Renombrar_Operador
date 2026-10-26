@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.7.1** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.7.2** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -94,7 +94,7 @@ The red overlay validates whole naming structures, not just matching substrings:
 
 - Valid: `wall1`, `wall1_chrome0`, `floor0_bathfloor0`, `ceiling0_vent0` and the
   supported door/closet frame, panel and hardware paths.
-- Red: `Cube`, `wall_1`, `wall1_1`, `wall0_Cube`, `wall0_primitive0`, unknown
+- Red: `Cube`, `wall_1`, `wall1_1`, `wall0_Cube`, `wall0_primitive0`, `wall0_stuff0`, unknown
   families and malformed family paths.
 - `primitive` remains available as a parenting fallback, but is deliberately
   excluded from the display whitelist. Root structures and the existing
@@ -104,7 +104,11 @@ The red overlay validates whole naming structures, not just matching substrings:
 The approved display families are alacena, apagador, bathfloor, black, board, chrome,
 closet, coladera, colgador, collider, door, enchufe, estufa, faucet, fridge,
 fridge&micro, glass, hvac, jaladera, lamp, lampara, lampemission, lampmetal, lavabo, luz, mirror, perchero,
-regadera, repisa, seat, stuff, trim, vent, wall and window.
+regadera, repisa, seat, trim, vent, wall and window.
+
+Version 3.7.2 excludes `stuff` from the approved display families, alongside
+`primitive`. Both produce red warnings on meshes and remain accepted by the
+parenting operator. Non-mesh helpers remain excluded from audit warnings.
 
 Version 3.6.1 adds `black`, `lampmetal` and `lampemission` to both parenting
 and the supported-name overlay list. `primitive` remains highlighted in red.
@@ -133,7 +137,7 @@ fallback catches changes made by scripts. Nothing is saved automatically.
   descendants. A duplicated door frame with panels advances the door index,
   keeping the frame, panels and hardware together. Transforms and parenting are
   preserved. A normalized wall root can still be parented as a sub-wall.
-- **Automatic audit** reports unknown families (including `primitive`), malformed
+- **Automatic audit** reports unknown families (including `primitive` and `stuff`), malformed
   names, remaining duplicate suffixes, missing parents and incorrect parents.
   It uses this extension's approved family list, including `black`, `lampmetal`
   and `lampemission`. Door, closet, panel and hardware relationships are checked.
@@ -164,14 +168,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.7.1 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.7.2 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.1"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.2"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds

@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.7.2: Stuff se resalta en rojo, al igual que primitive.
 # v3.7.1: Auditoria y avisos rojos solo para mallas; excluye empties y otros tipos.
 # v3.7.0: Auditoria continua y correccion automatica de duplicados .001.
 # v3.6.1: Admite black, lampmetal y lampemission en emparentado y visores.

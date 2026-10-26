@@ -2,14 +2,14 @@
 import re
 from functools import lru_cache
 
-# Approved display families. The parenting operator still accepts primitive as
-# its generic fallback; the red overlay deliberately excludes it.
+# Approved display families. Parenting still accepts primitive and stuff;
+# the red overlay deliberately excludes both.
 DISPLAY_FAMILIES = frozenset({
     'alacena', 'apagador', 'bathfloor', 'black', 'board', 'chrome', 'closet',
     'coladera', 'colgador', 'collider', 'door', 'enchufe', 'estufa',
     'faucet', 'fridge', 'fridge&micro', 'glass', 'hvac', 'jaladera',
     'lamp', 'lampara', 'lampemission', 'lampmetal', 'lavabo', 'luz', 'mirror', 'perchero',
-    'regadera', 'repisa', 'seat', 'stuff', 'trim', 'vent', 'wall', 'window',
+    'regadera', 'repisa', 'seat', 'trim', 'vent', 'wall', 'window',
 })
 
 PADRE_RE = re.compile(r'^(wall|interiorwall|floor|ceiling)\d+$')

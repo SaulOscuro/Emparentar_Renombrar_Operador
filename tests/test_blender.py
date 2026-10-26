@@ -231,8 +231,9 @@ class ParentingTests(unittest.TestCase):
 
     def test_approved_display_families_and_roots(self):
         from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
-        self.assertEqual(len(DISPLAY_FAMILIES), 35)
+        self.assertEqual(len(DISPLAY_FAMILIES), 34)
         self.assertNotIn('primitive', DISPLAY_FAMILIES)
+        self.assertNotIn('stuff', DISPLAY_FAMILIES)
         for family in DISPLAY_FAMILIES:
             for parent in ('wall0', 'interiorwall1', 'floor2', 'ceiling3'):
                 with self.subTest(parent=parent, family=family):
@@ -244,7 +245,8 @@ class ParentingTests(unittest.TestCase):
     def test_unknown_and_excluded_names_are_warnings(self):
         check = addon.name_overlays.unsupported_reason
         for name in ('Cube', 'wall_1', 'wall1_1', 'wall0_Cube', 'wall0_primitive0',
-                     'wall0_Primitive1.001', 'wall0_unknownfamily0', 'wall0_door0_Cube',
+                     'wall0_Primitive1.001', 'wall0_stuff0', 'interiorwall1_Stuff2',
+                     'floor0_stuff3.001', 'ceiling0_stuff4', 'wall0_unknownfamily0', 'wall0_door0_Cube',
                      'wall0_chrome', 'wall0_chrome0garbage', 'wall0_chrome0_unknown0',
                      'wall0_hardware0', 'wall0_notchrome0', ' wall0_chrome0'):
             with self.subTest(name=name):
@@ -265,12 +267,13 @@ class ParentingTests(unittest.TestCase):
         valid = make_mesh('wall0_chrome0', parent)
         invalid = make_mesh('Cube', parent)
         primitive = make_mesh('wall0_primitive0', parent)
+        stuff = make_mesh('wall0_stuff0', parent)
         select(parent, valid)
         before = [(o, o.name, o.parent, o.matrix_world.copy(), tuple(o.color))
                   for o in bpy.data.objects]
         overlay._OverlayRuntime.enable_invalid_names(bpy.context)
         labels = list(overlay.visible_name_labels(bpy.context))
-        self.assertEqual({obj for obj, style in labels}, {invalid, primitive})
+        self.assertEqual({obj for obj, style in labels}, {invalid, primitive, stuff})
         for obj, (text, color, scale) in labels:
             self.assertFalse(obj.select_get())
             self.assertEqual(text, '! ' + obj.name)
@@ -499,6 +502,7 @@ class AutomaticTests(ParentingTests):
         floor = make_mesh('floor0')
         obj = make_mesh('wall0_chrome0', floor)
         primitive = make_mesh('wall0_primitive0', wall)
+        stuff = make_mesh('wall0_stuff0', wall)
         addon.automatic_tools.run_pass()
         self.assertTrue(addon.automatic_tools.warning_for(obj))
         self.assertEqual(obj.parent, floor)
@@ -506,6 +510,7 @@ class AutomaticTests(ParentingTests):
         addon.automatic_tools.run_pass()
         self.assertFalse(addon.automatic_tools.warning_for(obj))
         self.assertTrue(addon.automatic_tools.warning_for(primitive))
+        self.assertTrue(addon.automatic_tools.warning_for(stuff))
         obj.parent = None
         addon.automatic_tools.run_pass()
         self.assertTrue(addon.automatic_tools.warning_for(obj))
