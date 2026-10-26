@@ -6,8 +6,8 @@
       "schema_version": "1.0.0",
       "id": "emparentar_renombrar_operador",
       "name": "Emparentar y Renombrar Inteligente",
-      "tagline": "Emparenta objetos y propone familias segun el padre",
-      "version": "3.6.1",
+      "tagline": "Emparenta, audita nombres y corrige duplicados automaticamente",
+      "version": "3.7.0",
       "type": "add-on",
       "maintainer": "SaulOscuro",
       "license": [
@@ -18,9 +18,9 @@
       "tags": [
         "Object"
       ],
-      "archive_url": "./emparentar_renombrar_operador-3.6.1.zip",
-      "archive_size": 29552,
-      "archive_hash": "sha256:429a3b41c444acf5141e5594788da2a3cb96b42fda67cafbb21f63d41bfec008"
+      "archive_url": "./emparentar_renombrar_operador-3.7.0.zip",
+      "archive_size": 36400,
+      "archive_hash": "sha256:69e6144ff53284c8acc20a13d502fe01a69323d9d4382734a1dc7c27b40a4b1c"
     }
   ]
 }
