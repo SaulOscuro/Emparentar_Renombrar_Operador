@@ -1,10 +1,12 @@
 # Emparentar y Renombrar Inteligente — Extension Repository
 
-Native Blender 4.2+ repository. Current release: **3.7.0**.
+Native Blender 4.2+ repository. Current release: **3.7.1**.
 
 Add this URL in Blender's Get Extensions > Repositories > Add Remote Repository:
 
 https://raw.githubusercontent.com/SaulOscuro/Emparentar_Renombrar_Operador/codex/extension-repository/stable/index.json
+
+3.7.1 restricts automatic audit and red warnings to mesh objects. Empties, cameras, lights, curves, armatures and other helper types are excluded; Live NoDot also preserves non-mesh descendant names. Validated with 36 Blender 4.2.23 integration checks.
 
 3.7.0 adds automatic scene audit and Live NoDot Rename, enabled by default at startup, update and file load. Naming and parent problems appear in the red overlay and the Emparentar sidebar. Duplicate mesh-object names receive free numeric indices, including hierarchy prefixes. Validated in Blender 4.2.23 with 35 integration checks and live lifecycle checks.
 
@@ -14,6 +16,7 @@ Source and build instructions: [main branch](https://github.com/SaulOscuro/Empar
 
 Archives are immutable. Previous release ZIPs are retained. Publish the new archive and updated catalog together.
 
+3.7.1 SHA-256: `54388032bd92dc634d932f6ffb3a235ec6881597a7bdfa45d98a47a4b7e175c9`.
 3.7.0 SHA-256: `69e6144ff53284c8acc20a13d502fe01a69323d9d4382734a1dc7c27b40a4b1c`.
 3.6.1 SHA-256: `429a3b41c444acf5141e5594788da2a3cb96b42fda67cafbb21f63d41bfec008`.
 3.6.0 SHA-256: `84e666cc9e5aebffd504be3806b27ef62bb2f8bc118c07116cbacc502122bc84`.

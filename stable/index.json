@@ -7,7 +7,7 @@
       "id": "emparentar_renombrar_operador",
       "name": "Emparentar y Renombrar Inteligente",
       "tagline": "Emparenta, audita nombres y corrige duplicados automaticamente",
-      "version": "3.7.0",
+      "version": "3.7.1",
       "type": "add-on",
       "maintainer": "SaulOscuro",
       "license": [
@@ -18,9 +18,9 @@
       "tags": [
         "Object"
       ],
-      "archive_url": "./emparentar_renombrar_operador-3.7.0.zip",
-      "archive_size": 36400,
-      "archive_hash": "sha256:69e6144ff53284c8acc20a13d502fe01a69323d9d4382734a1dc7c27b40a4b1c"
+      "archive_url": "./emparentar_renombrar_operador-3.7.1.zip",
+      "archive_size": 36800,
+      "archive_hash": "sha256:54388032bd92dc634d932f6ffb3a235ec6881597a7bdfa45d98a47a4b7e175c9"
     }
   ]
 }
