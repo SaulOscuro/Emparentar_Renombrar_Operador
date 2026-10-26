@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.7.0: Auditoria continua y correccion automatica de duplicados .001.
 # v3.6.1: Admite black, lampmetal y lampemission en emparentado y visores.
 # v3.6.0: Visores de nombres y avisos rojos para familias no admitidas.
 # v3.5.0: Extension para Blender 4.2 con distribucion mediante repositorio remoto.
@@ -33,7 +34,7 @@ import re
 
 
 from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, NOMBRE_ESPECIAL_RE
-from . import name_overlays
+from . import name_overlays, automatic_tools
 
 
 # Las tuplas permanentes mantienen vivos los textos del EnumProperty de Blender.
@@ -62,7 +63,8 @@ def objetos_sin_familia(objetos):
     """Las jerarquías conservan su tratamiento de puertas/closets existente."""
     return [obj for obj in objetos if not obj.children
             and not NOMBRE_ESPECIAL_RE.fullmatch(obj.name.strip())
-            and not DUPLICADO_ESTRUCTURAL_RE.fullmatch(obj.name.strip())]
+            and not DUPLICADO_ESTRUCTURAL_RE.fullmatch(obj.name.strip())
+            and not re.fullmatch(r'(?:wall|interiorwall|ceiling)\d+', obj.name.strip())]
 
 
 def nombre_para_familia(padre, familia, objeto, reservados=()):
@@ -394,7 +396,8 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                 # Convertir duplicados de wall/interiorwall/ceiling en sub-walls del padre activo.
                 nombre_obj = obj_individual.name
                 nombre_obj_limpio = nombre_obj.strip() if nombre_obj != nombre_obj.strip() else nombre_obj
-                if DUPLICADO_ESTRUCTURAL_RE.fullmatch(nombre_obj_limpio):
+                if (DUPLICADO_ESTRUCTURAL_RE.fullmatch(nombre_obj_limpio)
+                        or re.fullmatch(r'(?:wall|interiorwall|ceiling)\d+', nombre_obj_limpio)):
                     indice_wall = encontrar_siguiente_indice(
                         objeto_padre,
                         f"{objeto_padre.name}_wall",
@@ -493,9 +496,11 @@ def register():
     bpy.utils.register_class(OBJECT_OT_reparent_and_rename_smart)
     bpy.types.VIEW3D_MT_object.append(menu_func)
     name_overlays.register()
+    automatic_tools.register()
 
 def unregister():
     """Desregistra el operador y el menu al deshabilitar el addon."""
+    automatic_tools.unregister()
     name_overlays.unregister()
     bpy.utils.unregister_class(OBJECT_OT_reparent_and_rename_smart)
     bpy.types.VIEW3D_MT_object.remove(menu_func)

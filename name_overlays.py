@@ -210,9 +210,11 @@ NORMAL_COLOR = (1.0, 1.0, 1.0, 1.0)
 ERROR_COLOR = (1.0, 0.12, 0.08, 1.0)
 
 
-def label_style(name):
+def label_style(name, obj=None):
     """The warning color takes priority when multiple overlays are enabled."""
-    invalid = _OverlayRuntime.invalid_names_enabled and unsupported_reason(name) is not None
+    from .automatic_tools import warning_for
+    invalid = _OverlayRuntime.invalid_names_enabled and (
+        unsupported_reason(name) is not None or (obj is not None and warning_for(obj)))
     return (f'! {name}', ERROR_COLOR, 1.2) if invalid else (name, NORMAL_COLOR, 1.0)
 
 
@@ -220,9 +222,9 @@ def visible_name_labels(context):
     """Plan labels for visible objects without selection requirements or edits."""
     for obj in context.visible_objects:
         name = obj.name
-        invalid = _OverlayRuntime.invalid_names_enabled and unsupported_reason(name) is not None
+        invalid = label_style(name, obj)[1] == ERROR_COLOR
         if _OverlayRuntime.all_names_enabled or invalid:
-            yield obj, label_style(name)
+            yield obj, label_style(name, obj)
 
 
 def _draw_all_object_names(context, region, font_id, ui_scale) -> None:
@@ -316,7 +318,7 @@ def _draw_selection_name(context, region, font_id, ui_scale) -> None:
     if obj is None:
         return
 
-    label, color, scale = label_style(obj.name)
+    label, color, scale = label_style(obj.name, obj)
     blf.size(font_id, max(10, round(12 * ui_scale * scale)))
     text_width, text_height = blf.dimensions(font_id, label)
     draw_x, draw_y = cursor_label_position(

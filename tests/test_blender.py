@@ -60,6 +60,9 @@ class DialogProbe:
 class ParentingTests(unittest.TestCase):
     def setUp(self):
         addon.name_overlays._OverlayRuntime.shutdown(bpy.context)
+        addon.automatic_tools._snapshot = None
+        addon.automatic_tools._undo_snapshot = None
+        addon.automatic_tools._reports = {}
         for obj in list(bpy.data.objects):
             bpy.data.objects.remove(obj, do_unlink=True)
 
@@ -280,12 +283,13 @@ class ParentingTests(unittest.TestCase):
 
     def test_warning_priority_when_all_names_and_selection_are_enabled(self):
         overlay = addon.name_overlays
-        valid = make_object('floor0_bathfloor0')
+        parent = make_object('floor0')
+        valid = make_object('floor0_bathfloor0', parent)
         invalid = make_object('wall_1')
         overlay._OverlayRuntime.enable_all_names(bpy.context)
         overlay._OverlayRuntime.enable_invalid_names(bpy.context)
         labels = list(overlay.visible_name_labels(bpy.context))
-        self.assertEqual(len(labels), 2)
+        self.assertEqual(len(labels), 3)
         styles = {obj: style for obj, style in labels}
         self.assertEqual(styles[valid][1], overlay.NORMAL_COLOR)
         self.assertEqual(styles[invalid][1], overlay.ERROR_COLOR)
@@ -296,7 +300,8 @@ class ParentingTests(unittest.TestCase):
 
     def test_rename_reclassifies_and_hidden_objects_are_excluded(self):
         overlay = addon.name_overlays
-        obj = make_object('Cube')
+        parent = make_object('wall0')
+        obj = make_object('Cube', parent)
         hidden = make_object('Unknown')
         hidden.hide_set(True)
         bpy.context.view_layer.update()
@@ -352,8 +357,211 @@ class ParentingTests(unittest.TestCase):
                 space.overlay.show_overlays = previous
 
 
+def make_mesh(name, parent=None):
+    obj = bpy.data.objects.new(name, bpy.data.meshes.new('TestMesh'))
+    bpy.context.scene.collection.objects.link(obj)
+    obj.parent = parent
+    return obj
+
+
+class AutomaticTests(ParentingTests):
+    # Only the tests declared below are collected separately.
+    def test_live_duplicate_skips_occupied_indices_and_is_idempotent(self):
+        root = make_mesh('wall1')
+        make_mesh('wall1_lamp0', root)
+        make_mesh('wall1_lamp1', root)
+        duplicate = make_mesh('wall1_lamp0.001', root)
+        select(root, duplicate)
+        before = (duplicate.matrix_world.copy(), duplicate.parent, duplicate.data.name)
+        self.assertEqual(addon.automatic_tools.run_pass(), 1)
+        self.assertEqual(duplicate.name, 'wall1_lamp2')
+        self.assertEqual((duplicate.matrix_world, duplicate.parent, duplicate.data.name), before)
+        self.assertEqual(set(bpy.context.selected_objects), {root, duplicate})
+        self.assertEqual(bpy.context.active_object, root)
+        self.assertEqual(addon.automatic_tools.report_for(bpy.context.scene), ())
+        self.assertEqual(addon.automatic_tools.run_pass(), 0)
+
+    def test_duplicate_root_keeps_children_and_descendant_prefixes(self):
+        make_mesh('wall0')
+        root = make_mesh('wall0.001')
+        frame = make_mesh('wall0_door0_frame0.001', root)
+        panel = make_mesh('wall0_door0_leftpanel0.001', frame)
+        hardware = make_mesh('wall0_door0_leftpanel0_hardware0.001', panel)
+        addon.automatic_tools.run_pass()
+        self.assertEqual([o.name for o in (root, frame, panel, hardware)], [
+            'wall1', 'wall1_door0_frame0', 'wall1_door0_leftpanel0',
+            'wall1_door0_leftpanel0_hardware0'])
+        self.assertEqual((frame.parent, panel.parent, hardware.parent), (root, frame, panel))
+        self.assertEqual(addon.automatic_tools.report_for(bpy.context.scene), ())
+
+    def test_duplicate_door_increments_door_not_frame(self):
+        root = make_mesh('wall0')
+        make_mesh('wall0_door0_frame0', root)
+        frame = make_mesh('wall0_door0_frame0.001', root)
+        panel = make_mesh('wall0_door0_leftpanel0.001', frame)
+        addon.automatic_tools.run_pass()
+        self.assertEqual(frame.name, 'wall0_door1_frame0')
+        self.assertEqual(panel.name, 'wall0_door1_leftpanel0')
+        self.assertEqual(addon.automatic_tools.report_for(bpy.context.scene), ())
+
+    def test_generic_duplicate_stays_an_audit_warning(self):
+        make_mesh('Cube')
+        obj = make_mesh('Cube.001')
+        addon.automatic_tools.run_pass()
+        self.assertEqual(obj.name, 'Cube0')
+        self.assertTrue(addon.automatic_tools.warning_for(obj))
+        self.assertEqual(len(addon.automatic_tools.report_for(bpy.context.scene)), 2)
+
+    def test_two_duplicate_doors_inside_a_duplicate_wall_keep_their_panels(self):
+        make_mesh('wall0')
+        root = make_mesh('wall0.001')
+        frames, panels = [], []
+        for suffix in ('.001', '.002'):
+            frames.append(make_mesh('wall0_door0_frame0' + suffix, root))
+            panels.append(make_mesh('wall0_door0_leftpanel0' + suffix, frames[-1]))
+        addon.automatic_tools.run_pass()
+        self.assertEqual(root.name, 'wall1')
+        self.assertEqual([obj.name for obj in frames], ['wall1_door0_frame0', 'wall1_door1_frame0'])
+        self.assertEqual([obj.name for obj in panels], ['wall1_door0_leftpanel0', 'wall1_door1_leftpanel0'])
+        self.assertEqual(addon.automatic_tools.report_for(bpy.context.scene), ())
+
+    def test_mid_assignment_failure_restores_all_original_names(self):
+        from parenting_under_test.live_naming import assign_atomic
+        class Item:
+            library = override_library = None
+            is_editable = True
+            users_scene = ()
+            def __init__(self, name, fail=False):
+                self._name, self.fail = name, fail
+            @property
+            def name(self):
+                return self._name
+            @name.setter
+            def name(self, value):
+                if self.fail and value == 'wall3':
+                    self.fail = False
+                    raise RuntimeError('Simulated write failure')
+                self._name = value
+        one, two = Item('wall0'), Item('wall1', True)
+        with self.assertRaises(RuntimeError):
+            assign_atomic([(one, 'wall2'), (two, 'wall3')], [one, two])
+        self.assertEqual((one.name, two.name), ('wall0', 'wall1'))
+
+    def test_live_rename_waits_for_object_mode(self):
+        make_mesh('wall0')
+        obj = make_mesh('wall0.001')
+        select(obj)
+        bpy.ops.object.mode_set(mode='EDIT')
+        try:
+            addon.automatic_tools.run_pass()
+            self.assertEqual(obj.name, 'wall0.001')
+        finally:
+            bpy.ops.object.mode_set(mode='OBJECT')
+        addon.automatic_tools.run_pass()
+        self.assertEqual(obj.name, 'wall1')
+
+    def test_audit_tracks_parent_errors_and_excluded_family_without_mutation(self):
+        wall = make_mesh('wall0')
+        floor = make_mesh('floor0')
+        obj = make_mesh('wall0_chrome0', floor)
+        primitive = make_mesh('wall0_primitive0', wall)
+        addon.automatic_tools.run_pass()
+        self.assertTrue(addon.automatic_tools.warning_for(obj))
+        self.assertEqual(obj.parent, floor)
+        obj.parent = wall
+        addon.automatic_tools.run_pass()
+        self.assertFalse(addon.automatic_tools.warning_for(obj))
+        self.assertTrue(addon.automatic_tools.warning_for(primitive))
+        obj.parent = None
+        addon.automatic_tools.run_pass()
+        self.assertTrue(addon.automatic_tools.warning_for(obj))
+
+    def test_live_normalized_structural_root_still_parents_as_subwall(self):
+        make_mesh('wall0')
+        obj = make_mesh('wall0.001')
+        target = make_mesh('ceiling0')
+        addon.automatic_tools.run_pass()
+        self.assertEqual(obj.name, 'wall1')
+        select(target, obj)
+        self.assertEqual(bpy.ops.object.reparent_and_rename_smart('EXEC_DEFAULT'), {'FINISHED'})
+        self.assertEqual(obj.name, 'ceiling0_wall0')
+
+    def test_protected_multiscene_hierarchy_is_not_partly_renamed(self):
+        make_mesh('wall0')
+        root = make_mesh('wall0.001')
+        child = make_mesh('wall0_chrome0', root)
+        other = bpy.data.scenes.new('SharedTest')
+        other.collection.objects.link(child)
+        try:
+            addon.automatic_tools.run_pass()
+            self.assertEqual(root.name, 'wall0.001')
+            self.assertEqual(child.name, 'wall0_chrome0')
+            self.assertTrue(addon.automatic_tools.warning_for(root))
+        finally:
+            bpy.data.scenes.remove(other)
+
+    def test_rename_options_are_independent_and_materials_unchanged(self):
+        make_mesh('wall0')
+        obj = make_mesh('wall0.001')
+        material = bpy.data.materials.new('Surface.001')
+        original_option = addon.automatic_tools.option
+        try:
+            addon.automatic_tools.option = lambda name: name == 'automatic_audit'
+            addon.automatic_tools.run_pass()
+            self.assertEqual(obj.name, 'wall0.001')
+            self.assertTrue(addon.automatic_tools.report_for(bpy.context.scene))
+            addon.automatic_tools.option = lambda name: name == 'live_rename'
+            addon.automatic_tools.run_pass()
+            self.assertEqual(obj.name, 'wall1')
+            self.assertEqual(addon.automatic_tools.report_for(bpy.context.scene), ())
+            self.assertEqual(material.name, 'Surface.001')
+        finally:
+            addon.automatic_tools.option = original_option
+            bpy.data.materials.remove(material)
+
+    def test_undo_snapshot_is_not_immediately_renormalized(self):
+        make_mesh('wall0')
+        obj = make_mesh('wall0.001')
+        addon.automatic_tools._before_undo(None)
+        addon.automatic_tools._after_undo(None)
+        addon.automatic_tools.run_pass()
+        self.assertEqual(obj.name, 'wall0.001')
+        obj.name = 'wall0.002'
+        addon.automatic_tools.run_pass()
+        self.assertEqual(obj.name, 'wall1')
+
+    def test_load_enable_disable_callbacks_and_initial_pass(self):
+        runtime = addon.automatic_tools
+        self.assertTrue(bpy.app.timers.is_registered(runtime._tick))
+        runtime._before_load(None)
+        self.assertFalse(bpy.app.timers.is_registered(runtime._tick))
+        make_mesh('floor0')
+        obj = make_mesh('floor0.001')
+        runtime._after_load(None)
+        self.assertTrue(bpy.app.timers.is_registered(runtime._tick))
+        runtime.run_pass()
+        self.assertEqual(obj.name, 'floor1')
+        addon.unregister()
+        self.assertFalse(bpy.app.timers.is_registered(runtime._tick))
+        for name, callback in runtime.HANDLERS:
+            self.assertNotIn(callback, getattr(bpy.app.handlers, name))
+        addon.register()
+        for name, callback in runtime.HANDLERS:
+            self.assertEqual(list(getattr(bpy.app.handlers, name)).count(callback), 1)
+
+    def test_utf8_overflow_rejects_whole_group(self):
+        from parenting_under_test.live_naming import assign_atomic
+        one = make_mesh('wall0')
+        two = make_mesh('wall1')
+        with self.assertRaises(ValueError):
+            assign_atomic([(one, 'wall2'), (two, 'ñ' * 32)], bpy.data.objects)
+        self.assertEqual((one.name, two.name), ('wall0', 'wall1'))
+
+
 try:
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(ParentingTests)
+    suite.addTests(AutomaticTests(name) for name in AutomaticTests.__dict__
+                   if name.startswith('test_'))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     if not result.wasSuccessful():
         raise RuntimeError('Blender integration checks failed')

@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.6.1** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.7.0** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -9,6 +9,8 @@ based on naming rules. It expects an active object named `wallN`,
 `interiorwallN`, `floorN`, or `ceilingN` and a selection in Object Mode.
 
 ## Features
+- Automatic audit and Live NoDot Rename start enabled and run after loading,
+  enabling/updating the extension, opening a blend and editing the scene.
 - Smart renaming for doors, closet doors with panels/hardware, and primitives
 - Parents processed objects under the active wall/interiorwall/floor/ceiling
 - Preserves the chrome family (e.g. wall0_chrome0, interiorwall1_chrome2,
@@ -107,8 +109,44 @@ regadera, repisa, seat, stuff, trim, vent, wall and window.
 Version 3.6.1 adds `black`, `lampmetal` and `lampemission` to both parenting
 and the supported-name overlay list. `primitive` remains highlighted in red.
 
-This checks naming structure; it does not infer object contents or validate their
-actual parenting relationships. Attribution is in `THIRD_PARTY_NOTICES.md`.
+The automatic audit below also checks actual parenting relationships.
+Attribution is in `THIRD_PARTY_NOTICES.md`.
+
+## Automatic audit and Live NoDot Rename (3.7.0)
+
+Both features are enabled by default. No audit or cleanup button is needed.
+They start when the enabled extension loads (including after an update), when
+Blender starts, and after opening another blend. Editing names, creating or
+duplicating objects and changing parents triggers a delayed pass; a one-second
+fallback catches changes made by scripts. Nothing is saved automatically.
+
+- **Live NoDot Rename** replaces Blender duplicate suffixes with available
+  numeric indices on mesh objects. `wall1_lamp0.001` becomes `wall1_lamp1` when
+  `wall1_lamp0` exists and index 1 is free; occupied indices are skipped.
+- Duplicated parents retain the matching name prefixes of their actual
+  descendants. A duplicated door frame with panels advances the door index,
+  keeping the frame, panels and hardware together. Transforms and parenting are
+  preserved. A normalized wall root can still be parented as a sub-wall.
+- **Automatic audit** reports unknown families (including `primitive`), malformed
+  names, remaining duplicate suffixes, missing parents and incorrect parents.
+  It uses this extension's approved family list, including `black`, `lampmetal`
+  and `lampemission`. Door, closet, panel and hardware relationships are checked.
+- Audit warnings appear in the red overlay. **N-panel > Emparentar > Auditoría
+  automática** shows the current warning count and reasons, including details
+  for the active object. The View menu's red-overlay switch still controls labels.
+- The two persistent switches in the panel and add-on preferences can disable
+  either feature independently. Existing name-only overlay checks remain available.
+
+The audit is read-only. It does not assign families, reparent objects, reorganize
+collections or require Sync Manager's `Room/Colliders` collection structure.
+Live rename affects object names only; mesh data and materials keep their names.
+Linked/library override objects and objects shared between scenes are skipped;
+groups requiring protected renames are left for review. Failed writes restore
+the original names. Blender 4.2's 63-byte name limit is respected.
+
+Renaming waits until Object Mode and until rendering has finished. After Undo or
+Redo, the restored naming state is audited but is not immediately renamed again;
+the next naming, hierarchy or object change resumes automatic normalization.
 
 ## Validation
 
@@ -120,14 +158,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.6.1 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.7.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.6.1"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.0"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds
@@ -144,6 +182,9 @@ Verify the published catalog and downloaded archive hash before reporting a rele
 - __init__.py
 - naming_rules.py
 - name_overlays.py
+- automatic_tools.py
+- live_naming.py
+- live_audit.py
 - blender_manifest.toml
 - tests/test_blender.py
 - scripts/build_extension.py
