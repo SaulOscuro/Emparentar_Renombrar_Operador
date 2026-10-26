@@ -59,6 +59,7 @@ class DialogProbe:
 
 class ParentingTests(unittest.TestCase):
     def setUp(self):
+        addon.name_overlays._OverlayRuntime.shutdown(bpy.context)
         for obj in list(bpy.data.objects):
             bpy.data.objects.remove(obj, do_unlink=True)
 
@@ -223,6 +224,131 @@ class ParentingTests(unittest.TestCase):
         addon.menu_func(SimpleNamespace(layout=layout), bpy.context)
         self.assertEqual(calls, [('object.reparent_and_rename_smart', 'INVOKE_DEFAULT')])
         self.assertEqual(layout.operator_context, 'EXEC_REGION_WIN')
+
+
+    def test_approved_display_families_and_roots(self):
+        from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
+        self.assertEqual(len(DISPLAY_FAMILIES), 32)
+        self.assertNotIn('primitive', DISPLAY_FAMILIES)
+        for family in DISPLAY_FAMILIES:
+            for parent in ('wall0', 'interiorwall1', 'floor2', 'ceiling3'):
+                with self.subTest(parent=parent, family=family):
+                    self.assertIsNone(unsupported_reason(f'{parent}_{family}0'))
+        for name in ('wall0', 'interiorwall1', 'floor2', 'ceiling3', 'toallero_colgador0', 'wall2_chrome4.001'):
+            self.assertIsNone(unsupported_reason(name), name)
+
+    def test_unknown_and_excluded_names_are_warnings(self):
+        check = addon.name_overlays.unsupported_reason
+        for name in ('Cube', 'wall_1', 'wall1_1', 'wall0_Cube', 'wall0_primitive0',
+                     'wall0_Primitive1.001', 'wall0_lampemission0', 'wall0_door0_Cube',
+                     'wall0_chrome', 'wall0_chrome0garbage', 'wall0_chrome0_unknown0',
+                     'wall0_hardware0', 'wall0_notchrome0', ' wall0_chrome0'):
+            with self.subTest(name=name):
+                self.assertIsNotNone(check(name))
+
+    def test_generated_door_and_closet_names_are_accepted(self):
+        check = addon.name_overlays.unsupported_reason
+        for name in ('wall0_door0_frame0', 'wall0_door0_leftpanel0',
+                     'wall0_door0_rightpanel1_hardware2', 'wall0_door0_leftpanel0_door0',
+                     'floor0_closet0_door0_frame0',
+                     'interiorwall0_closet0_door0_closedleftpanel0_hardware0',
+                     'wall0_closet0_door0_openrightpanel0_door0'):
+            self.assertIsNone(check(name), name)
+
+    def test_red_labels_do_not_require_selection_and_do_not_edit_objects(self):
+        overlay = addon.name_overlays
+        parent = make_object('wall0')
+        valid = make_object('wall0_chrome0', parent)
+        invalid = make_object('Cube', parent)
+        primitive = make_object('wall0_primitive0', parent)
+        select(parent, valid)
+        before = [(o, o.name, o.parent, o.matrix_world.copy(), tuple(o.color))
+                  for o in bpy.data.objects]
+        overlay._OverlayRuntime.enable_invalid_names(bpy.context)
+        labels = list(overlay.visible_name_labels(bpy.context))
+        self.assertEqual({obj for obj, style in labels}, {invalid, primitive})
+        for obj, (text, color, scale) in labels:
+            self.assertFalse(obj.select_get())
+            self.assertEqual(text, '! ' + obj.name)
+            self.assertEqual(color, overlay.ERROR_COLOR)
+            self.assertGreater(scale, 1.0)
+        for obj, name, old_parent, matrix, color in before:
+            self.assertEqual((obj.name, obj.parent, obj.matrix_world, tuple(obj.color)),
+                             (name, old_parent, matrix, color))
+        self.assertEqual(set(bpy.context.selected_objects), {parent, valid})
+
+    def test_warning_priority_when_all_names_and_selection_are_enabled(self):
+        overlay = addon.name_overlays
+        valid = make_object('floor0_bathfloor0')
+        invalid = make_object('wall_1')
+        overlay._OverlayRuntime.enable_all_names(bpy.context)
+        overlay._OverlayRuntime.enable_invalid_names(bpy.context)
+        labels = list(overlay.visible_name_labels(bpy.context))
+        self.assertEqual(len(labels), 2)
+        styles = {obj: style for obj, style in labels}
+        self.assertEqual(styles[valid][1], overlay.NORMAL_COLOR)
+        self.assertEqual(styles[invalid][1], overlay.ERROR_COLOR)
+        # The cursor label uses this same style decision.
+        self.assertEqual(overlay.label_style(invalid.name)[1], overlay.ERROR_COLOR)
+        overlay._OverlayRuntime.disable_invalid_names(bpy.context)
+        self.assertEqual(overlay.label_style(invalid.name)[1], overlay.NORMAL_COLOR)
+
+    def test_rename_reclassifies_and_hidden_objects_are_excluded(self):
+        overlay = addon.name_overlays
+        obj = make_object('Cube')
+        hidden = make_object('Unknown')
+        hidden.hide_set(True)
+        bpy.context.view_layer.update()
+        overlay._OverlayRuntime.enable_invalid_names(bpy.context)
+        self.assertEqual([o for o, _ in overlay.visible_name_labels(bpy.context)], [obj])
+        obj.name = 'wall0_chrome0'
+        self.assertEqual(list(overlay.visible_name_labels(bpy.context)), [])
+        obj.name = 'wall0_primitive0'
+        self.assertEqual([o for o, _ in overlay.visible_name_labels(bpy.context)], [obj])
+
+    def test_overlay_lifecycle_has_one_handler_and_cleans_up(self):
+        overlay = addon.name_overlays
+        overlay._OverlayRuntime.enable_all_names(bpy.context)
+        handle = overlay._OverlayRuntime.draw_handle
+        self.assertIsNotNone(handle)
+        overlay._OverlayRuntime.enable_invalid_names(bpy.context)
+        self.assertEqual(overlay._OverlayRuntime.draw_handle, handle)
+        overlay._OverlayRuntime.disable_all_names(bpy.context)
+        self.assertEqual(overlay._OverlayRuntime.draw_handle, handle)
+        overlay._OverlayRuntime.disable_invalid_names(bpy.context)
+        self.assertIsNone(overlay._OverlayRuntime.draw_handle)
+        addon.unregister()
+        self.assertNotIn(overlay._before_load, bpy.app.handlers.load_pre)
+        self.assertNotIn(overlay._after_load, bpy.app.handlers.load_post)
+        addon.register()
+        self.assertEqual(list(bpy.app.handlers.load_pre).count(overlay._before_load), 1)
+        self.assertEqual(list(bpy.app.handlers.load_post).count(overlay._after_load), 1)
+
+    def test_view_menu_contains_all_three_independent_modes(self):
+        calls = []
+        layout = SimpleNamespace(operator_context='EXEC_REGION_WIN', separator=lambda: None)
+        layout.operator = lambda identifier, **kw: calls.append((identifier, layout.operator_context, kw))
+        addon.name_overlays._draw_view_menu(SimpleNamespace(layout=layout), bpy.context)
+        self.assertEqual({row[0] for row in calls}, {
+            'ero.selection_name_overlay_toggle', 'ero.all_object_names_overlay_toggle',
+            'ero.unsupported_names_overlay_toggle'})
+        self.assertTrue(all(row[1] == 'INVOKE_REGION_WIN' for row in calls))
+        self.assertEqual(layout.operator_context, 'EXEC_REGION_WIN')
+
+    def test_blender_show_overlays_switch_is_respected(self):
+        window = bpy.context.window_manager.windows[0]
+        area = next(a for a in window.screen.areas if a.type == 'VIEW_3D')
+        region = next(r for r in area.regions if r.type == 'WINDOW')
+        with bpy.context.temp_override(window=window, area=area, region=region):
+            space = bpy.context.space_data
+            previous = space.overlay.show_overlays
+            try:
+                space.overlay.show_overlays = False
+                self.assertIsNone(addon.name_overlays._valid_draw_context())
+                space.overlay.show_overlays = True
+                self.assertIsNotNone(addon.name_overlays._valid_draw_context())
+            finally:
+                space.overlay.show_overlays = previous
 
 
 try:

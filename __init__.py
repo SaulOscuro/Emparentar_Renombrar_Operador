@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.6.0: Visores de nombres y avisos rojos para familias no admitidas.
 # v3.5.0: Extension para Blender 4.2 con distribucion mediante repositorio remoto.
 # v3.4.0: Selector de familia para objetos sin regla y sugerencia bathfloor para floorN.
 # v3.3.1: Reconoce chromeN como familia y conserva su nombre al emparentar.
@@ -30,35 +31,9 @@ import bpy
 import re
 
 
-PADRE_RE = re.compile(r'^(wall|interiorwall|floor|ceiling)\d+$')
-DUPLICADO_ESTRUCTURAL_RE = re.compile(
-    r'^(?:wall|interiorwall|ceiling)\d+\.\d+$', re.IGNORECASE,
-)
-NOMBRE_ESPECIAL_RE = re.compile(
-    r'^(?:'
-    r'(?:wall|interiorwall|floor|ceiling)\d+_(?:'
-    r'alacena\d+|apagador\d+|board\d+|closet\d+'
-    r'|closet\d+_door\d+_frame\d+'
-    r'|closet\d+_door\d+_closedleftpanel\d+(?:_hardware\d+)?'
-    r'|closet\d+_door\d+_openleftpanel\d+(?:_hardware\d+)?'
-    r'|closet\d+_door\d+_closedrightpanel\d+(?:_hardware\d+)?'
-    r'|closet\d+_door\d+_openrightpanel\d+(?:_hardware\d+)?'
-    r'|closet\d+_door\d+_closedleftpanel\d+_door\d+'
-    r'|closet\d+_door\d+_closedrightpanel\d+_door\d+'
-    r'|closet\d+_door\d+_door\d+'
-    r'|closet\d+_door\d+_openleftpanel\d+_door\d+'
-    r'|closet\d+_door\d+_openrightpanel\d+_door\d+'
-    r'|chrome\d+|coladera\d+|colgador\d+|door\d+|glass\d+'
-    r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
-    r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-    r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
-    r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
-    r'|bathfloor\d+|primitive\d+|wall\d+'
-    r')'
-    r'|toallero_colgador\d+'
-    r')(?:\.\d+)?$',
-    re.IGNORECASE,
-)
+from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, NOMBRE_ESPECIAL_RE
+from . import name_overlays
+
 
 # Las tuplas permanentes mantienen vivos los textos del EnumProperty de Blender.
 # Añadir aquí las sugerencias de cada padre cuando estén definidas.
@@ -516,9 +491,11 @@ def register():
     """Registra el operador y el menu en Blender al habilitar el addon."""
     bpy.utils.register_class(OBJECT_OT_reparent_and_rename_smart)
     bpy.types.VIEW3D_MT_object.append(menu_func)
+    name_overlays.register()
 
 def unregister():
     """Desregistra el operador y el menu al deshabilitar el addon."""
+    name_overlays.unregister()
     bpy.utils.unregister_class(OBJECT_OT_reparent_and_rename_smart)
     bpy.types.VIEW3D_MT_object.remove(menu_func)
 

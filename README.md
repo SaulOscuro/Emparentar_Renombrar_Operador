@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.5.0** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.6.0** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -62,7 +62,7 @@ Installing through the remote repository is the route that provides remote updat
   root and the active parent. Hierarchies are skipped when processing multiple roots.
 
 Future suggestions belong in `SUGERENCIAS_POR_PADRE`; also add their naming patterns
-to `NOMBRE_ESPECIAL_RE` so previously assigned names remain recognized.
+to `naming_rules.NOMBRE_ESPECIAL_RE` so previously assigned names remain recognized.
 
 For scripts, use `INVOKE_DEFAULT` to open the selector. Non-interactive calls with
 unnamed objects must explicitly pass a valid family, for example:
@@ -70,6 +70,42 @@ unnamed objects must explicitly pass a valid family, for example:
 ```python
 bpy.ops.object.reparent_and_rename_smart('EXEC_DEFAULT', familia_sin_regla='bathfloor')
 ```
+
+## Viewport name overlays (3.6.0)
+
+The 3D Viewport **View** menu has three independent switches:
+
+- **Selection Name Overlay:** the active selected object's name follows the cursor,
+  in white for supported names.
+- **All Object Names:** labels every visible object at its visual center.
+- **Unsupported Names (Red):** labels unsupported names in bright red, slightly
+  larger and with a `!` marker. Objects do not need to be selected. Red takes
+  priority over white when modes are combined.
+
+Selection names and red warnings start enabled; all-object names start disabled.
+The switches apply for the current session and survive opening another blend.
+Blender's Show Overlays switch hides these labels too. Hidden objects are excluded.
+Renaming an object refreshes its label. These are display-only tools: they never
+rename, reparent or delete objects and do not change materials or object colors.
+
+The red overlay validates whole naming structures, not just matching substrings:
+
+- Valid: `wall1`, `wall1_chrome0`, `floor0_bathfloor0`, `ceiling0_vent0` and the
+  supported door/closet frame, panel and hardware paths.
+- Red: `Cube`, `wall_1`, `wall1_1`, `wall0_Cube`, `wall0_primitive0`, unknown
+  families and malformed family paths.
+- `primitive` remains available as a parenting fallback, but is deliberately
+  excluded from the display whitelist. Root structures and the existing
+  `toallero_colgadorN` exception remain valid. Supported `.001` duplicate suffixes
+  on family names retain their existing recognition.
+
+The approved display families are alacena, apagador, bathfloor, board, chrome,
+closet, coladera, colgador, collider, door, enchufe, estufa, faucet, fridge,
+fridge&micro, glass, hvac, jaladera, lamp, lampara, lavabo, luz, mirror, perchero,
+regadera, repisa, seat, stuff, trim, vent, wall and window.
+
+This checks naming structure; it does not infer object contents or validate their
+actual parenting relationships. Attribution is in `THIRD_PARTY_NOTICES.md`.
 
 ## Validation
 
@@ -81,14 +117,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.5.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.6.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.5.0"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.6.0"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds
@@ -103,6 +139,8 @@ Verify the published catalog and downloaded archive hash before reporting a rele
 
 ## Files
 - __init__.py
+- naming_rules.py
+- name_overlays.py
 - blender_manifest.toml
 - tests/test_blender.py
 - scripts/build_extension.py
