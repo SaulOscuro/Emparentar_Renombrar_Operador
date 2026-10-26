@@ -1,7 +1,7 @@
 """
 Addon de Blender para renombrar y emparentar objetos segun reglas de puertas,
 closets y primitivos.
-Requiere un objeto activo llamado wallN/interiorwallN/ceilingN y seleccion en Modo Objeto.
+Requiere un objeto activo llamado wallN/interiorwallN/floorN/ceilingN y seleccion en Modo Objeto.
 Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 """
 # -------------------------------------------------------------------------
@@ -10,8 +10,11 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # Este addon unificado renombra y emparenta objetos seleccionados.
 # - Si el objeto tiene hijos y su nombre sugiere "closet", lo trata como jerarquía de puerta de closet (con hardware).
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
-# - Si el objeto no tiene hijos, lo trata como un primitivo.
+# - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.5.0: Extension para Blender 4.2 con distribucion mediante repositorio remoto.
+# v3.4.0: Selector de familia para objetos sin regla y sugerencia bathfloor para floorN.
+# v3.3.1: Reconoce chromeN como familia y conserva su nombre al emparentar.
 # v3.3.0: Añadida lógica para convertir duplicados wall/interiorwall/ceiling
 #         en sub-walls del padre activo usando el formato "<padre>_wallN".
 # v3.2.0: Añadido manejo de hardware para los paneles de las puertas de closet.
@@ -23,20 +26,80 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # v3.0.0: Unificada la lógica de jerarquías y primitivos en un solo operador.
 # -------------------------------------------------------------------------
 
-bl_info = {
-    "name": "Emparentador y Renombrador Inteligente (Unificado)",
-    "author": "Tu Nombre (con asistencia de Gemini)",
-    "version": (3, 3, 0),
-    "blender": (4, 2, 0),
-    "location": "View3D > Object Menu > Emparentar y Renombrar Inteligente",
-    "description": "Emparenta y renombra primitivos, puertas estándar (con hardware) o puertas de closet (con paneles y hardware).",
-    "warning": "",
-    "doc_url": "",
-    "category": "Object",
-}
-
 import bpy
 import re
+
+
+PADRE_RE = re.compile(r'^(wall|interiorwall|floor|ceiling)\d+$')
+DUPLICADO_ESTRUCTURAL_RE = re.compile(
+    r'^(?:wall|interiorwall|ceiling)\d+\.\d+$', re.IGNORECASE,
+)
+NOMBRE_ESPECIAL_RE = re.compile(
+    r'^(?:'
+    r'(?:wall|interiorwall|floor|ceiling)\d+_(?:'
+    r'alacena\d+|apagador\d+|board\d+|closet\d+'
+    r'|closet\d+_door\d+_frame\d+'
+    r'|closet\d+_door\d+_closedleftpanel\d+(?:_hardware\d+)?'
+    r'|closet\d+_door\d+_openleftpanel\d+(?:_hardware\d+)?'
+    r'|closet\d+_door\d+_closedrightpanel\d+(?:_hardware\d+)?'
+    r'|closet\d+_door\d+_openrightpanel\d+(?:_hardware\d+)?'
+    r'|closet\d+_door\d+_closedleftpanel\d+_door\d+'
+    r'|closet\d+_door\d+_closedrightpanel\d+_door\d+'
+    r'|closet\d+_door\d+_door\d+'
+    r'|closet\d+_door\d+_openleftpanel\d+_door\d+'
+    r'|closet\d+_door\d+_openrightpanel\d+_door\d+'
+    r'|chrome\d+|coladera\d+|colgador\d+|door\d+|glass\d+'
+    r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
+    r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
+    r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
+    r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
+    r'|bathfloor\d+|primitive\d+|wall\d+'
+    r')'
+    r'|toallero_colgador\d+'
+    r')(?:\.\d+)?$',
+    re.IGNORECASE,
+)
+
+# Las tuplas permanentes mantienen vivos los textos del EnumProperty de Blender.
+# Añadir aquí las sugerencias de cada padre cuando estén definidas.
+FAMILIA_GENERICA = ("primitive", "primitive (genérico)", "Usar la familia genérica", 0)
+SUGERENCIAS_POR_PADRE = {
+    "wall": (),
+    "interiorwall": (),
+    "floor": (("bathfloor", "bathfloor", "Piso de baño", 1),),
+    "ceiling": (),
+}
+OPCIONES_POR_PADRE = {
+    tipo: sugerencias + (FAMILIA_GENERICA,)
+    for tipo, sugerencias in SUGERENCIAS_POR_PADRE.items()
+}
+OPCIONES_GENERICAS = (FAMILIA_GENERICA,)
+
+
+def opciones_familia(self, context):
+    padre = context.active_object if context else None
+    match = PADRE_RE.fullmatch(padre.name) if padre else None
+    return OPCIONES_POR_PADRE[match.group(1)] if match else OPCIONES_GENERICAS
+
+
+def objetos_sin_familia(objetos):
+    """Las jerarquías conservan su tratamiento de puertas/closets existente."""
+    return [obj for obj in objetos if not obj.children
+            and not NOMBRE_ESPECIAL_RE.fullmatch(obj.name.strip())
+            and not DUPLICADO_ESTRUCTURAL_RE.fullmatch(obj.name.strip())]
+
+
+def nombre_para_familia(padre, familia, objeto, reservados=()):
+    """Calcula un nombre libre, también si lo ocupa un objeto fuera del padre."""
+    prefijo = f"{padre.name}_{familia}"
+    indice = encontrar_siguiente_indice(padre, prefijo, exclude_obj=objeto)
+    while True:
+        nombre = f"{prefijo}{indice}"
+        existente = bpy.data.objects.get(nombre)
+        if nombre not in reservados and (existente is None or existente == objeto):
+            return nombre
+        indice += 1
+
 
 def encontrar_siguiente_indice(objeto_padre: bpy.types.Object, prefijo_hijo: str, exclude_obj: bpy.types.Object = None) -> int:
     """
@@ -159,7 +222,7 @@ def procesar_jerarquia_puerta_closet(context: bpy.types.Context, objeto_raiz_pue
     emparentar_con_operador_seguro(context, objeto_raiz_puerta_closet_original, objeto_padre_wall)
 
     patron_prefijo_closet = re.compile(
-        r'^(?:wall|interiorwall|ceiling)\d+_closet\d+_door\d+_(.+)$',
+        r'^(?:wall|interiorwall|floor|ceiling)\d+_closet\d+_door\d+_(.+)$',
         re.IGNORECASE,
     )
 
@@ -227,10 +290,63 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
     bl_label = "Emparentar y Renombrar Inteligente"
     bl_options = {'REGISTER', 'UNDO'}
 
+    familia_sin_regla: bpy.props.EnumProperty(
+        name="Familia",
+        description="Familia para los objetos sin una regla de nombre reconocida",
+        items=opciones_familia,
+        options={'SKIP_SAVE'},
+    )
+
     @classmethod
     def poll(cls, context):
-        """Valida que haya objeto activo y mas de un seleccionado."""
-        return context.active_object is not None and len(context.selected_objects) > 1
+        """El emparentado requiere una selección en Modo Objeto."""
+        return (context.mode == 'OBJECT' and context.active_object is not None
+                and len(context.selected_objects) > 1)
+
+    def invoke(self, context, event):
+        padre = context.active_object
+        if not padre or not PADRE_RE.fullmatch(padre.name):
+            return self.execute(context)
+        pendientes = objetos_sin_familia(
+            [obj for obj in context.selected_objects if obj != padre]
+        )
+        if not pendientes:
+            return self.execute(context)
+        opciones = opciones_familia(self, context)
+        if (not self.properties.is_property_set("familia_sin_regla")
+                or self.familia_sin_regla not in {item[0] for item in opciones}):
+            self.familia_sin_regla = opciones[0][0]
+        return context.window_manager.invoke_props_dialog(self, width=480)
+
+    def check(self, context):
+        # Actualizar los ejemplos cuando cambia la familia elegida.
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        padre = context.active_object
+        match = PADRE_RE.fullmatch(padre.name) if padre else None
+        if not match:
+            layout.label(text="Selecciona un padre válido para continuar.", icon='ERROR')
+            return
+        pendientes = objetos_sin_familia(
+            [obj for obj in context.selected_objects if obj != padre]
+        )
+        layout.label(text=f"Padre: {padre.name}")
+        layout.label(text=f"Objetos sin familia reconocida: {len(pendientes)}")
+        if not SUGERENCIAS_POR_PADRE[match.group(1)]:
+            layout.label(text=f"Aún no hay sugerencias para {match.group(1)}.", icon='INFO')
+        layout.prop(self, "familia_sin_regla", text="Familia")
+        box = layout.box()
+        box.label(text="Nombres propuestos:")
+        reservados = set()
+        for obj in pendientes[:5]:
+            nombre = nombre_para_familia(padre, self.familia_sin_regla, obj, reservados)
+            reservados.add(nombre)
+            box.label(text=f"{obj.name} → {nombre}")
+        if len(pendientes) > 5:
+            box.label(text=f"… y {len(pendientes) - 5} objetos más")
+        layout.label(text="La familia elegida se aplica a todos los objetos sin regla.")
 
     def execute(self, context):
         """
@@ -241,11 +357,14 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
         original_active = context.view_layer.objects.active
         original_selection = context.selected_objects[:]
         objeto_padre = context.active_object
+        if context.mode != 'OBJECT' or objeto_padre is None:
+            self.report({'WARNING'}, "Selecciona los objetos y su padre en Modo Objeto.")
+            return {'CANCELLED'}
         
         # --- Paso 1: Validar objeto padre y seleccion ---
-        match_padre = re.match(r'^(wall|interiorwall|ceiling)\d+$', objeto_padre.name)
+        match_padre = PADRE_RE.fullmatch(objeto_padre.name)
         if not match_padre:
-            self.report({'WARNING'}, "Padre activo debe ser 'wall<índice>', 'interiorwall<índice>' o 'ceiling<índice>'.")
+            self.report({'WARNING'}, "Padre activo debe ser wallN, interiorwallN, floorN o ceilingN.")
             return {'CANCELLED'}
             
         objetos_a_procesar = [obj for obj in context.selected_objects if obj != objeto_padre]
@@ -253,6 +372,20 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
         if not objetos_a_procesar:
             self.report({'WARNING'}, "No se seleccionaron objetos para procesar (además del padre activo).")
             return {'CANCELLED'}
+
+        pendientes = objetos_sin_familia(objetos_a_procesar)
+        familia_elegida = "primitive"
+        if pendientes:
+            # EXEC_DEFAULT también debe recibir una elección explícita antes de modificar la escena.
+            if not self.properties.is_property_set("familia_sin_regla"):
+                self.report({'WARNING'}, "Hay objetos sin familia. Ejecuta el operador desde el menú para elegir una.")
+                return {'CANCELLED'}
+            familia_elegida = self.familia_sin_regla
+            if familia_elegida not in {item[0] for item in opciones_familia(self, context)}:
+                self.report({'WARNING'}, "La familia elegida no está disponible para este padre.")
+                return {'CANCELLED'}
+            # Procesar primero los nombres previsualizados; las reglas existentes resuelven después sus conflictos.
+            objetos_a_procesar = pendientes + [obj for obj in objetos_a_procesar if obj not in pendientes]
 
         # --- Paso 2: Procesar jerarquias o primitivos ---
         # Priorizar el procesamiento de jerarquías si solo se selecciona una (además del padre)
@@ -273,31 +406,6 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
         else: # Procesar como primitivos o múltiples objetos sin hijos (o advertir si tienen hijos)
             count_primitivos = 0
             jerarquias_omitidas = 0
-            # Patron especial para mantener nomenclaturas definidas y limpiar sufijo .###.
-            nombre_especial_re = re.compile(
-                r'^(?:'
-                r'(?:wall|interiorwall|ceiling)\d+_(?:'
-                r'alacena\d+|apagador\d+|board\d+|closet\d+'
-                r'|closet\d+_door\d+_frame\d+'
-                r'|closet\d+_door\d+_closedleftpanel\d+(?:_hardware\d+)?'
-                r'|closet\d+_door\d+_openleftpanel\d+(?:_hardware\d+)?'
-                r'|closet\d+_door\d+_closedrightpanel\d+(?:_hardware\d+)?'
-                r'|closet\d+_door\d+_openrightpanel\d+(?:_hardware\d+)?'
-                r'|closet\d+_door\d+_closedleftpanel\d+_door\d+'
-                r'|closet\d+_door\d+_closedrightpanel\d+_door\d+'
-                r'|closet\d+_door\d+_door\d+'
-                r'|closet\d+_door\d+_openleftpanel\d+_door\d+'
-                r'|closet\d+_door\d+_openrightpanel\d+_door\d+'
-                r'|coladera\d+|colgador\d+|door\d+|glass\d+'
-                r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
-                r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-                r'|jaladera\d+|lampara\d+|lamp\d+|lavabo\d+|luz\d+|mirror\d+'
-                r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
-                r')'
-                r'|toallero_colgador\d+'
-                r')(?:\.\d+)?$',
-                re.IGNORECASE,
-            )
             for obj_individual in objetos_a_procesar:
                 if obj_individual.children:
                     # Si estamos en este bloque, significa que o se seleccionaron múltiples objetos,
@@ -310,7 +418,7 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                 # Convertir duplicados de wall/interiorwall/ceiling en sub-walls del padre activo.
                 nombre_obj = obj_individual.name
                 nombre_obj_limpio = nombre_obj.strip() if nombre_obj != nombre_obj.strip() else nombre_obj
-                if re.match(r'^(?:wall|interiorwall|ceiling)\d+\.\d+$', nombre_obj_limpio, re.IGNORECASE):
+                if DUPLICADO_ESTRUCTURAL_RE.fullmatch(nombre_obj_limpio):
                     indice_wall = encontrar_siguiente_indice(
                         objeto_padre,
                         f"{objeto_padre.name}_wall",
@@ -322,15 +430,15 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                     continue
 
                 # Mantener enchufeN/apagadorN (limpiar .###); si hay conflicto, buscar siguiente indice
-                match_especial = nombre_especial_re.match(nombre_obj)
+                match_especial = NOMBRE_ESPECIAL_RE.fullmatch(nombre_obj)
                 if not match_especial and nombre_obj != nombre_obj.strip():
                     # Tolerar espacios accidentales sin cambiar la intencion del nombre.
-                    match_especial = nombre_especial_re.match(nombre_obj.strip())
+                    match_especial = NOMBRE_ESPECIAL_RE.fullmatch(nombre_obj.strip())
                 if match_especial:
                     nombre_base = nombre_obj.strip() if nombre_obj != nombre_obj.strip() else nombre_obj
                     nombre_base = re.sub(r'\.\d+$', '', nombre_base)
-                    # Alinear el prefijo wall/interiorwall/ceiling con el objeto padre activo.
-                    match_prefijo = re.match(r'^(?:wall|interiorwall|ceiling)\d+_(.+)$', nombre_base, re.IGNORECASE)
+                    # Alinear el prefijo wall/interiorwall/floor/ceiling con el objeto padre activo.
+                    match_prefijo = re.match(r'^(?:wall|interiorwall|floor|ceiling)\d+_(.+)$', nombre_base, re.IGNORECASE)
                     if match_prefijo:
                         nombre_base = f"{objeto_padre.name}_{match_prefijo.group(1)}"
                     existente = bpy.data.objects.get(nombre_base)
@@ -348,14 +456,13 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                     count_primitivos += 1
                     continue
 
-                # Tratar como primitivo
-                indice_primitivo = encontrar_siguiente_indice(objeto_padre, f"{objeto_padre.name}_primitive", exclude_obj=obj_individual)
-                obj_individual.name = f"{objeto_padre.name}_primitive{indice_primitivo}"
+                # Aplicar la familia elegida a los objetos sin regla.
+                obj_individual.name = nombre_para_familia(objeto_padre, familia_elegida, obj_individual)
                 emparentar_con_operador_seguro(context, obj_individual, objeto_padre)
                 count_primitivos += 1
             
             if count_primitivos > 0:
-                self.report({'INFO'}, f"Se procesaron {count_primitivos} objetos primitivos.")
+                self.report({'INFO'}, f"Se procesaron {count_primitivos} objetos.")
             if jerarquias_omitidas == 0 and count_primitivos == 0 and not (len(objetos_a_procesar) == 1 and objetos_a_procesar[0].children) :
                  self.report({'WARNING'}, "No se procesó ningún objeto primitivo válido.")
             elif jerarquias_omitidas > 0 and count_primitivos == 0:
@@ -400,7 +507,10 @@ def menu_func(self, context):
     Agrega el operador al menu Object del View3D.
     Se usa en register() para insertar el acceso en la UI.
     """
+    contexto_anterior = self.layout.operator_context
+    self.layout.operator_context = 'INVOKE_DEFAULT'
     self.layout.operator(OBJECT_OT_reparent_and_rename_smart.bl_idname)
+    self.layout.operator_context = contexto_anterior
 
 def register():
     """Registra el operador y el menu en Blender al habilitar el addon."""

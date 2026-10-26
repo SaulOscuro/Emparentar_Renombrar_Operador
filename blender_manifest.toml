@@ -1,0 +1,23 @@
+schema_version = "1.0.0"
+
+id = "emparentar_renombrar_operador"
+version = "3.5.0"
+name = "Emparentar y Renombrar Inteligente"
+tagline = "Emparenta objetos y propone familias segun el padre"
+maintainer = "SaulOscuro"
+type = "add-on"
+website = "https://github.com/SaulOscuro/Emparentar_Renombrar_Operador"
+tags = ["Object"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-only"]
+
+[build]
+paths_exclude_pattern = [
+    "__pycache__/",
+    ".*",
+    "*.zip",
+    "/tests/",
+    "/scripts/",
+    "/docs/",
+    "/repository/",
+]
