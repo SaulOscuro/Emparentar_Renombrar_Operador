@@ -110,14 +110,14 @@ class ParentingTests(unittest.TestCase):
     def test_existing_chrome_and_new_floor_family_in_same_selection(self):
         parent = make_object('floor0')
         chrome = make_object('wall7_chrome2.001')
-        bathub = make_object('wall7_bathub2.001')
+        bathub = make_object('wall7_bathtub2.001')
         unknown = make_object('Cube')
         select(parent, chrome, bathub, unknown)
         bpy.ops.object.reparent_and_rename_smart('EXEC_DEFAULT', familia_sin_regla='bathfloor')
         self.assertEqual(chrome.name, 'floor0_chrome2')
         self.assertEqual(unknown.name, 'floor0_bathfloor0')
         self.assertEqual(chrome.parent, parent)
-        self.assertEqual(bathub.name, 'floor0_bathub2')
+        self.assertEqual(bathub.name, 'floor0_bathtub2')
         self.assertEqual(bathub.parent, parent)
 
     def test_known_family_moving_into_previewed_name_is_renumbered(self):
@@ -234,7 +234,8 @@ class ParentingTests(unittest.TestCase):
 
     def test_approved_display_families_and_roots(self):
         from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
-        self.assertEqual(len(DISPLAY_FAMILIES), 35)
+        self.assertEqual(len(DISPLAY_FAMILIES), 36)
+        self.assertIn('bathtub', DISPLAY_FAMILIES)
         self.assertIn('bathub', DISPLAY_FAMILIES)
         self.assertNotIn('primitive', DISPLAY_FAMILIES)
         self.assertNotIn('stuff', DISPLAY_FAMILIES)
@@ -243,7 +244,7 @@ class ParentingTests(unittest.TestCase):
                 with self.subTest(parent=parent, family=family):
                     self.assertIsNone(unsupported_reason(f'{parent}_{family}0'))
         for name in ('wall0', 'interiorwall1', 'floor2', 'ceiling3', 'toallero_colgador0', 'wall2_chrome4.001',
-                     'ceiling0_black3', 'wall1_lampmetal0', 'wall1_lampemission0'):
+                     'ceiling0_black3', 'wall1_lampmetal0', 'wall1_lampemission0', 'wall2_bathtub1'):
             self.assertIsNone(unsupported_reason(name), name)
 
     def test_unknown_and_excluded_names_are_warnings(self):
@@ -270,6 +271,7 @@ class ParentingTests(unittest.TestCase):
         parent = make_object('wall0')
         valid = make_mesh('wall0_chrome0', parent)
         make_mesh('wall0_bathub0', parent)
+        make_mesh('wall0_bathtub1', parent)
         invalid = make_mesh('Cube', parent)
         primitive = make_mesh('wall0_primitive0', parent)
         stuff = make_mesh('wall0_stuff0', parent)

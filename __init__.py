@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.7.4: Admite la escritura correcta bathtub y conserva bathub por compatibilidad.
 # v3.7.3: Admite bathub en emparentado, auditoria y visores.
 # v3.7.2: Stuff se resalta en rojo, al igual que primitive.
 # v3.7.1: Auditoria y avisos rojos solo para mallas; excluye empties y otros tipos.

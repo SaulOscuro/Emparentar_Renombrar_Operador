@@ -5,7 +5,7 @@ from functools import lru_cache
 # Approved display families. Parenting still accepts primitive and stuff;
 # the red overlay deliberately excludes both.
 DISPLAY_FAMILIES = frozenset({
-    'alacena', 'apagador', 'bathfloor', 'bathub', 'black', 'board', 'chrome', 'closet',
+    'alacena', 'apagador', 'bathfloor', 'bathtub', 'bathub', 'black', 'board', 'chrome', 'closet',
     'coladera', 'colgador', 'collider', 'door', 'enchufe', 'estufa',
     'faucet', 'fridge', 'fridge&micro', 'glass', 'hvac', 'jaladera',
     'lamp', 'lampara', 'lampemission', 'lampmetal', 'lavabo', 'luz', 'mirror', 'perchero',
@@ -35,7 +35,7 @@ NOMBRE_ESPECIAL_RE = re.compile(
     r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
     r'|jaladera\d+|lampara\d+|lamp\d+|lampemission\d+|lampmetal\d+|lavabo\d+|luz\d+|mirror\d+'
     r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
-    r'|bathfloor\d+|bathub\d+|primitive\d+|wall\d+'
+    r'|bathfloor\d+|bathtub\d+|bathub\d+|primitive\d+|wall\d+'
     r')'
     r'|toallero_colgador\d+'
     r')(?:\.\d+)?$',
