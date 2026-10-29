@@ -110,12 +110,15 @@ class ParentingTests(unittest.TestCase):
     def test_existing_chrome_and_new_floor_family_in_same_selection(self):
         parent = make_object('floor0')
         chrome = make_object('wall7_chrome2.001')
+        bathub = make_object('wall7_bathub2.001')
         unknown = make_object('Cube')
-        select(parent, chrome, unknown)
+        select(parent, chrome, bathub, unknown)
         bpy.ops.object.reparent_and_rename_smart('EXEC_DEFAULT', familia_sin_regla='bathfloor')
         self.assertEqual(chrome.name, 'floor0_chrome2')
         self.assertEqual(unknown.name, 'floor0_bathfloor0')
         self.assertEqual(chrome.parent, parent)
+        self.assertEqual(bathub.name, 'floor0_bathub2')
+        self.assertEqual(bathub.parent, parent)
 
     def test_known_family_moving_into_previewed_name_is_renumbered(self):
         parent = make_object('floor0')
@@ -231,7 +234,8 @@ class ParentingTests(unittest.TestCase):
 
     def test_approved_display_families_and_roots(self):
         from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
-        self.assertEqual(len(DISPLAY_FAMILIES), 34)
+        self.assertEqual(len(DISPLAY_FAMILIES), 35)
+        self.assertIn('bathub', DISPLAY_FAMILIES)
         self.assertNotIn('primitive', DISPLAY_FAMILIES)
         self.assertNotIn('stuff', DISPLAY_FAMILIES)
         for family in DISPLAY_FAMILIES:
@@ -265,6 +269,7 @@ class ParentingTests(unittest.TestCase):
         overlay = addon.name_overlays
         parent = make_object('wall0')
         valid = make_mesh('wall0_chrome0', parent)
+        make_mesh('wall0_bathub0', parent)
         invalid = make_mesh('Cube', parent)
         primitive = make_mesh('wall0_primitive0', parent)
         stuff = make_mesh('wall0_stuff0', parent)
