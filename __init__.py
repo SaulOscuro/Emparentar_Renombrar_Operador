@@ -12,6 +12,7 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 # - Si el objeto tiene hijos y no es un closet, lo trata como una jerarquía de puerta estándar (con hardware).
 # - Si no tiene hijos, conserva su familia o solicita una si no hay una regla reconocida.
 #
+# v3.8.0: Familias personalizadas compartidas y aceptación desde el objeto activo.
 # v3.7.4: Admite la escritura correcta bathtub y conserva bathub por compatibilidad.
 # v3.7.3: Admite bathub en emparentado, auditoria y visores.
 # v3.7.2: Stuff se resalta en rojo, al igual que primitive.
@@ -37,8 +38,8 @@ import bpy
 import re
 
 
-from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, NOMBRE_ESPECIAL_RE
-from . import name_overlays, automatic_tools
+from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, is_parenting_name
+from . import name_overlays, automatic_tools, family_ui
 
 
 # Las tuplas permanentes mantienen vivos los textos del EnumProperty de Blender.
@@ -60,13 +61,14 @@ OPCIONES_GENERICAS = (FAMILIA_GENERICA,)
 def opciones_familia(self, context):
     padre = context.active_object if context else None
     match = PADRE_RE.fullmatch(padre.name) if padre else None
-    return OPCIONES_POR_PADRE[match.group(1)] if match else OPCIONES_GENERICAS
+    base = OPCIONES_POR_PADRE[match.group(1)] if match else OPCIONES_GENERICAS
+    return family_ui.family_items(base)
 
 
 def objetos_sin_familia(objetos):
     """Las jerarquías conservan su tratamiento de puertas/closets existente."""
     return [obj for obj in objetos if not obj.children
-            and not NOMBRE_ESPECIAL_RE.fullmatch(obj.name.strip())
+            and not is_parenting_name(obj.name.strip())
             and not DUPLICADO_ESTRUCTURAL_RE.fullmatch(obj.name.strip())
             and not re.fullmatch(r'(?:wall|interiorwall|ceiling)\d+', obj.name.strip())]
 
@@ -316,7 +318,7 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
         )
         layout.label(text=f"Padre: {padre.name}")
         layout.label(text=f"Objetos sin familia reconocida: {len(pendientes)}")
-        if not SUGERENCIAS_POR_PADRE[match.group(1)]:
+        if not SUGERENCIAS_POR_PADRE[match.group(1)] and len(opciones_familia(self, context)) == 1:
             layout.label(text=f"Aún no hay sugerencias para {match.group(1)}.", icon='INFO')
         layout.prop(self, "familia_sin_regla", text="Familia")
         box = layout.box()
@@ -413,10 +415,10 @@ class OBJECT_OT_reparent_and_rename_smart(bpy.types.Operator):
                     continue
 
                 # Mantener enchufeN/apagadorN (limpiar .###); si hay conflicto, buscar siguiente indice
-                match_especial = NOMBRE_ESPECIAL_RE.fullmatch(nombre_obj)
+                match_especial = is_parenting_name(nombre_obj)
                 if not match_especial and nombre_obj != nombre_obj.strip():
                     # Tolerar espacios accidentales sin cambiar la intencion del nombre.
-                    match_especial = NOMBRE_ESPECIAL_RE.fullmatch(nombre_obj.strip())
+                    match_especial = is_parenting_name(nombre_obj.strip())
                 if match_especial:
                     nombre_base = nombre_obj.strip() if nombre_obj != nombre_obj.strip() else nombre_obj
                     nombre_base = re.sub(r'\.\d+$', '', nombre_base)
@@ -501,9 +503,11 @@ def register():
     bpy.types.VIEW3D_MT_object.append(menu_func)
     name_overlays.register()
     automatic_tools.register()
+    family_ui.register()
 
 def unregister():
     """Desregistra el operador y el menu al deshabilitar el addon."""
+    family_ui.unregister()
     automatic_tools.unregister()
     name_overlays.unregister()
     bpy.utils.unregister_class(OBJECT_OT_reparent_and_rename_smart)

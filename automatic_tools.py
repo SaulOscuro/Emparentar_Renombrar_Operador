@@ -4,7 +4,7 @@ import traceback
 import bpy
 from bpy.app.handlers import persistent
 
-from . import live_audit, live_naming
+from . import live_audit, live_naming, family_store
 
 _enabled = False
 _busy = False
@@ -27,7 +27,7 @@ def option(name):
 
 
 def fingerprint():
-    return (option('automatic_audit'), option('live_rename'), tuple(
+    return (option('automatic_audit'), option('live_rename'), family_store.families(), tuple(
         (obj.as_pointer(), obj.name, obj.parent.as_pointer() if obj.parent else 0,
          obj.type, live_naming.editable(obj),
          tuple(scene.as_pointer() for scene in obj.users_scene))
@@ -179,6 +179,8 @@ class ERO_Preferences(bpy.types.AddonPreferences):
         self.layout.prop(self, 'automatic_audit')
         self.layout.prop(self, 'live_rename')
         self.layout.label(text='Activos al habilitar, actualizar y abrir Blender.')
+        from .family_ui import draw_controls
+        draw_controls(self.layout, _context)
 
 
 class ERO_PT_automatic_audit(bpy.types.Panel):

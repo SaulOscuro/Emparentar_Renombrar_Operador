@@ -1,0 +1,27 @@
+{
+  "version": "3.8.0",
+  "bytes": 42692,
+  "sha256": "b14bdbf2eef854ce46981138bf39e5f8bfe704aeaba1cb7587de10f5c11e821a",
+  "scope": "Custom naming families and acceptance from active mesh",
+  "checks": [
+    "shared storage survives independent module reloads",
+    "cross-instance file locking",
+    "atomic write failure preserves previous file",
+    "invalid config is not overwritten",
+    "strict labels and complete name parsing",
+    "confirmation and selection guards",
+    "read-only acceptance, unchanged names, data and parents",
+    "parenting preserves custom families and offers them for unknown objects",
+    "parent errors and excluded families still warn",
+    "idempotent timer lifecycle",
+    "Blender 4.2 writes, 5.2 reads and writes, 4.2 reads both",
+    "native extension validation"
+  ],
+  "tests": {
+    "python_run": 6,
+    "failed": 0,
+    "blender_tests": 36,
+    "custom_family_runtime": "passed"
+  },
+  "active_blender": "Not accessed; no Computer Use. Background factory-startup tests used isolated config."
+}

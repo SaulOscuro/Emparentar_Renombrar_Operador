@@ -22,6 +22,8 @@ def main():
     env['BLENDER_USER_CONFIG'] = str(profile / 'config')
     env['BLENDER_USER_SCRIPTS'] = str(profile / 'scripts')
     env['BLENDER_USER_EXTENSIONS'] = str(profile / 'extensions')
+    env['J3D_TEST_ROOT'] = str(profile / 'scratch')
+    env['J3D_NAMING_CONFIG'] = str(profile / 'empty-families.json')
     base = [str(args.blender.resolve()), '--background', '--factory-startup']
 
     def run(*arguments):
@@ -29,6 +31,8 @@ def main():
 
     run('--disable-autoexec', '--python-exit-code', '1', '--python',
         str(source / 'tests' / 'test_blender.py'))
+    run('--disable-autoexec', '--python-exit-code', '1', '--python',
+        str(source / 'tests' / 'blender_custom_families_runtime_test.py'))
     run('--command', 'extension', 'build', '--source-dir', str(source),
         '--output-dir', str(output))
     archives = list(output.glob('*.zip'))

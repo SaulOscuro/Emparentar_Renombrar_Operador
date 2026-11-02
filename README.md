@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.7.4** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.8.0** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -9,6 +9,10 @@ based on naming rules. It expects an active object named `wallN`,
 `interiorwallN`, `floorN`, or `ceilingN` and a selection in Object Mode.
 
 ## Features
+- Shared custom naming families: add `wood` in Preferences or the Emparentar
+  sidebar, or confirm the family detected from an active mesh such as `wall3_wood0`.
+- The shared list is also used by J3DSyncManager 2.0 (2.5.48+), including other
+  Blender versions. Changes are picked up automatically without restarting.
 - Accepts the correctly spelled `bathtub` family, such as `wall2_bathtub1`,
   in parenting, automatic audit and name overlays. Parent errors still appear red.
   The previous `bathub` spelling remains compatible without renaming existing objects.
@@ -23,6 +27,31 @@ based on naming rules. It expects an active object named `wallN`,
 - Floors suggest `bathfloor`: `Cube` + active `floor0` becomes `floor0_bathfloor0`.
 
 ## Requirements
+### Custom families
+
+Open **Preferences > Add-ons > Emparentar > Familias personalizadas**, or the
+**Emparentar** sidebar panel. Use **Añadir familia** for a label such as `wood`,
+without numbers. Alternatively select a mesh named `wall3_wood0` and use
+**Object > Aceptar familia del objeto seleccionado**, then confirm `wood`.
+Both actions apply globally to both add-ons. They do not rename or reparent objects.
+
+Names still need a structural parent prefix, family and numeric index. Missing
+or incorrect Blender parents remain red, as do malformed suffixes and nested paths.
+Custom families appear in the parenting family chooser for all structural parents.
+Use the X beside a custom family to remove it after confirmation; existing objects
+retain their names and become unsupported again. Included families cannot be removed
+here, and `primitive`, `stuff` and structural/door-internal labels remain reserved.
+
+On Windows, the shared file is `%APPDATA%/J3DTools/naming_families.json`, outside
+the add-on installations and Blender version folders. Back it up to transfer the
+list to another computer. No file is created until a family is added. On macOS it
+lives under `~/Library/Application Support/J3DTools`, and on Linux under
+`$XDG_CONFIG_HOME/J3DTools` (or `~/.config/J3DTools`). Invalid files are reported
+without overwriting them; the current session retains its last valid list.
+The `J3D_NAMING_CONFIG` environment variable can override the shared file for tests
+or managed setups. Saves are atomic and serialized across Blender instances.
+
+### Blender version
 - Blender 4.2+
 
 ## Install from the remote repository
@@ -171,14 +200,14 @@ blender --background --factory-startup --python-exit-code 1 --python tests/test_
 
 The checks replace the test scene; do not run them in a working project.
 
-Version 3.7.4 is tested with Blender **4.2.23 LTS**. Release packages are built and
+Version 3.8.0 is tested with Blender **4.2.23 LTS**. Release packages are built and
 validated with Blender 4.2's native extension commands. The minimum supported
 version in the manifest is **4.2.0**.
 
 ## Build a release
 
 ```text
-python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.7.4"
+python scripts/build_extension.py --blender "path/to/blender.exe" --output-dir "dist/3.8.0"
 ```
 
 The output directory must be empty. The script runs the integration tests, builds

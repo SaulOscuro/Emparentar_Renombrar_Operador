@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "emparentar_renombrar_operador"
-version = "3.7.4"
+version = "3.8.0"
 name = "Emparentar y Renombrar Inteligente"
 tagline = "Emparenta, audita nombres y corrige duplicados automaticamente"
 maintainer = "SaulOscuro"
@@ -10,6 +10,9 @@ website = "https://github.com/SaulOscuro/Emparentar_Renombrar_Operador"
 tags = ["Object"]
 blender_version_min = "4.2.0"
 license = ["SPDX:GPL-3.0-only"]
+
+[permissions]
+files = "Read and save naming families shared with J3DSyncManager"
 
 [build]
 paths_exclude_pattern = [

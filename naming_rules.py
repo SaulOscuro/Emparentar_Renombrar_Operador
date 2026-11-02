@@ -1,6 +1,7 @@
 """Shared parenting rules and read-only viewport name validation."""
 import re
 from functools import lru_cache
+from . import family_store
 
 # Approved display families. Parenting still accepts primitive and stuff;
 # the red overlay deliberately excludes both.
@@ -55,8 +56,22 @@ PREFIJO_FAMILIA_RE = re.compile(
 )
 
 
-@lru_cache(maxsize=4096)
+def is_parenting_name(name, custom=None):
+    if NOMBRE_ESPECIAL_RE.fullmatch(name) or NOMBRE_PUERTA_GENERADO_RE.fullmatch(name):
+        return True
+    try:
+        family = family_store.family_from_name(name)
+    except ValueError:
+        return False
+    return family in (family_store.families() if custom is None else custom)
+
+
 def unsupported_reason(name):
+    return _unsupported_reason(name, family_store.families())
+
+
+@lru_cache(maxsize=4096)
+def _unsupported_reason(name, custom):
     """Return a display warning or None. Never change a name or scene object."""
     if not name or name != name.strip():
         return 'Formato de nombre no admitido'
@@ -68,8 +83,8 @@ def unsupported_reason(name):
     if family is None:
         return 'Falta un padre y una familia con sus índices'
     family = family.group(1).lower()
-    if family not in DISPLAY_FAMILIES:
+    if family not in DISPLAY_FAMILIES and family not in custom:
         return f'Familia no admitida: {family}'
-    if NOMBRE_ESPECIAL_RE.fullmatch(name) or NOMBRE_PUERTA_GENERADO_RE.fullmatch(name):
+    if is_parenting_name(name, custom):
         return None
     return 'Estructura de familia no admitida'
