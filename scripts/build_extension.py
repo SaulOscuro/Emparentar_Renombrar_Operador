@@ -33,6 +33,8 @@ def main():
         str(source / 'tests' / 'test_blender.py'))
     run('--disable-autoexec', '--python-exit-code', '1', '--python',
         str(source / 'tests' / 'blender_custom_families_runtime_test.py'))
+    run('--disable-autoexec', '--python-exit-code', '1', '--python',
+        str(source / 'tests' / 'blender_glb_parenting_guard_runtime_test.py'))
     run('--command', 'extension', 'build', '--source-dir', str(source),
         '--output-dir', str(output))
     archives = list(output.glob('*.zip'))
