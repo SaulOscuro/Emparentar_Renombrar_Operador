@@ -39,7 +39,7 @@ import re
 
 
 from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, is_parenting_name
-from . import name_overlays, automatic_tools, family_ui
+from . import name_overlays, automatic_tools, family_ui, glb_parenting_guard
 
 
 # Las tuplas permanentes mantienen vivos los textos del EnumProperty de Blender.
@@ -504,9 +504,15 @@ def register():
     name_overlays.register()
     automatic_tools.register()
     family_ui.register()
+    # Keep parenting checks at export, independent of viewport family colors.
+    from types import SimpleNamespace
+    from . import naming_rules, live_audit, live_naming
+    glb_parenting_guard.register(SimpleNamespace(canonical=live_naming.canonical,
+        expected_parent=live_audit.expected_parent, unsupported_reason=naming_rules.unsupported_reason))
 
 def unregister():
     """Desregistra el operador y el menu al deshabilitar el addon."""
+    glb_parenting_guard.unregister()
     family_ui.unregister()
     automatic_tools.unregister()
     name_overlays.unregister()

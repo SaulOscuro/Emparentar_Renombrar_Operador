@@ -70,6 +70,18 @@ def unsupported_reason(name):
     return _unsupported_reason(name, family_store.families())
 
 
+def family_warning(name):
+    """Viewport color checks family membership only, never hierarchy or suffixes."""
+    name = re.sub(r'\.\d{3,}(?=_|$)', '', name.strip())
+    if PADRE_RE.fullmatch(name) or re.fullmatch(r'toallero_colgador\d+', name, re.I):
+        return None
+    parts = name.split('_')
+    family = re.match(r'^([a-z&]+)', parts[1], re.I) if len(parts) > 1 else None
+    if family and family.group(1).lower() in DISPLAY_FAMILIES | family_store.families():
+        return None
+    return 'Nombre sin familia admitida'
+
+
 @lru_cache(maxsize=4096)
 def _unsupported_reason(name, custom):
     """Return a display warning or None. Never change a name or scene object."""
