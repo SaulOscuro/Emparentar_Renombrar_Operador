@@ -234,7 +234,7 @@ class ParentingTests(unittest.TestCase):
 
     def test_approved_display_families_and_roots(self):
         from parenting_under_test.naming_rules import DISPLAY_FAMILIES, unsupported_reason
-        self.assertEqual(len(DISPLAY_FAMILIES), 36)
+        self.assertEqual(len(DISPLAY_FAMILIES), 47)
         self.assertIn('bathtub', DISPLAY_FAMILIES)
         self.assertIn('bathub', DISPLAY_FAMILIES)
         self.assertNotIn('primitive', DISPLAY_FAMILIES)

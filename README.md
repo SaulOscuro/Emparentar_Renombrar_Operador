@@ -1,6 +1,6 @@
 # Emparentar y Renombrar Inteligente
 
-Extension **3.8.0** for **Blender 4.2+**, distributed through Blender's native
+Extension **3.9.0** for **Blender 4.2+**, distributed through Blender's native
 remote extension repositories. Source and releases are hosted in this GitHub
 repository; no separate server or access token is required.
 
@@ -9,47 +9,45 @@ based on naming rules. It expects an active object named `wallN`,
 `interiorwallN`, `floorN`, or `ceilingN` and a selection in Object Mode.
 
 ## Features
-- Shared custom naming families: add `wood` in Preferences or the Emparentar
-  sidebar, or confirm the family detected from an active mesh such as `wall3_wood0`.
-- The shared list is also used by J3DSyncManager 2.0 (2.5.48+), including other
-  Blender versions. Changes are picked up automatically without restarting.
-- Accepts the correctly spelled `bathtub` family, such as `wall2_bathtub1`,
-  in parenting, automatic audit and name overlays. Parent errors still appear red.
-  The previous `bathub` spelling remains compatible without renaming existing objects.
-- Automatic audit and Live NoDot Rename start enabled and run after loading,
-  enabling/updating the extension, opening a blend and editing the scene.
-- Smart renaming for doors, closet doors with panels/hardware, and primitives
-- Parents processed objects under the active wall/interiorwall/floor/ceiling
-- Preserves the chrome family (e.g. wall0_chrome0, interiorwall1_chrome2,
-  ceiling0_chrome0), aligns the parent prefix, and resolves duplicate indices.
-- Operator available in View3D > Object menu
-- Objects without a recognized naming rule open a family selector with name previews.
-- Floors suggest `bathfloor`: `Cube` + active `floor0` becomes `floor0_bathfloor0`.
+- One official catalog of 47 families shared with J3DSyncManager 2.5.61+.
+  Includes fridge, estufa, alacena, cabinet, cubierta, cubiertacabinet,
+  cubiertalavabo, microwave, showertray, wallbathtiles, white and wood.
+- Preferences adds custom families to naming, parenting, overlays and J3D's
+  Material/Tile targets. Included families cannot be removed or duplicated.
+- Custom family declarations travel inside the `.blend` when saved. A recipient
+  with Emparentar 3.9.0+ or J3D 2.5.61+ can use them without copying preferences.
+- Viewport red only means an unrecognized family. Missing parents are reviewed
+  at GLB export in a confirmation dialog; no automatic reparenting is performed.
+- Smart parenting/renaming for doors, closets, primitives and custom families.
+  Existing families and world transforms are retained when parenting.
+- Live audit and NoDot normalization run after enabling/loading and scene edits.
 
 ## Requirements
-### Custom families
+### Shared nomenclature
 
-Open **Preferences > Add-ons > Emparentar > Familias personalizadas**, or the
-**Emparentar** sidebar panel. Use **AÃ±adir familia** for a label such as `wood`,
-without numbers. Alternatively select a mesh named `wall3_wood0` and use
-**Object > Aceptar familia del objeto seleccionado**, then confirm `wood`.
-Both actions apply globally to both add-ons. They do not rename or reparent objects.
+Open **Preferences > Add-ons > Emparentar > Nomenclatura compartida**. The
+included names are shown separately from custom families. Use **Añadir familia**
+for a new label (letters, optionally joined by `&`, no numeric suffix), or accept
+the family of the selected object. Adding an included family is a harmless no-op.
+These operations do not rename or parent objects.
 
-Names still need a structural parent prefix, family and numeric index. Missing
-or incorrect Blender parents remain red, as do malformed suffixes and nested paths.
-Custom families appear in the parenting family chooser for all structural parents.
-Use the X beside a custom family to remove it after confirmation; existing objects
-retain their names and become unsupported again. Included families cannot be removed
-here, and `primitive`, `stuff` and structural/door-internal labels remain reserved.
+The personal list is shared between installed Blender versions on the same
+computer: `%APPDATA%/J3DTools/naming_families.json` on Windows,
+`~/Library/Application Support/J3DTools` on macOS, or
+`$XDG_CONFIG_HOME/J3DTools` / `~/.config/J3DTools` on Linux. Writes are atomic
+and locked. Invalid personal files are reported without overwriting them.
+`J3D_NAMING_CONFIG` overrides the location for tests or managed setups.
 
-On Windows, the shared file is `%APPDATA%/J3DTools/naming_families.json`, outside
-the add-on installations and Blender version folders. Back it up to transfer the
-list to another computer. No file is created until a family is added. On macOS it
-lives under `~/Library/Application Support/J3DTools`, and on Linux under
-`$XDG_CONFIG_HOME/J3DTools` (or `~/.config/J3DTools`). Invalid files are reported
-without overwriting them; the current session retains its last valid list.
-The `J3D_NAMING_CONFIG` environment variable can override the shared file for tests
-or managed setups. Saves are atomic and serialized across Blender instances.
+Saving a project stores its custom family declarations in scene metadata
+`j3d_naming_families` (JSON schema 1). Opening a received project merges those
+families into the active catalog without changing the recipient's personal list.
+Only declarations are accepted; arbitrary object names do not register families.
+Switching projects removes project-only families from the catalog. An explicit
+custom-family removal also removes its declaration from the current project.
+
+Both users must update their addons. Older projects must be opened and saved
+with the updated sender addon to carry their custom declarations. This concerns
+family transport; it does not change Blender's file-format compatibility.
 
 ### Blender version
 - Blender 4.2+
@@ -85,8 +83,7 @@ Installing through the remote repository is the route that provides remote updat
 ## Family suggestions (3.4.0)
 
 - `floorN`: suggests `bathfloor`, with `primitive` available as a generic alternative.
-- `wallN`, `interiorwallN`, `ceilingN`: specific suggestions are pending; the dialog
-  currently offers only the generic `primitive` family.
+- All structural parents offer the shared official and custom family catalog.
 - Recognized families, including `chrome` and previously assigned `bathfloor`, keep
   their existing rules. Indices avoid collisions, even with objects outside the parent.
 - A selection of several unnamed objects gets successive available names, for example
@@ -95,8 +92,8 @@ Installing through the remote repository is the route that provides remote updat
 - Door and closet hierarchies retain their existing handling: select one hierarchy
   root and the active parent. Hierarchies are skipped when processing multiple roots.
 
-Future suggestions belong in `SUGERENCIAS_POR_PADRE`; also add their naming patterns
-to `naming_rules.NOMBRE_ESPECIAL_RE` so previously assigned names remain recognized.
+Official families belong only in `nomenclature_catalog.OFFICIAL_FAMILIES`.
+Do not add separate family lists in UI, targets or naming regular expressions.
 
 For scripts, use `INVOKE_DEFAULT` to open the selector. Non-interactive calls with
 unnamed objects must explicitly pass a valid family, for example:

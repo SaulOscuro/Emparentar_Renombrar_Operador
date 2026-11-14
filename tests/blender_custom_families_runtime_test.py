@@ -57,7 +57,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 addon.register()
 try:
     parent = mesh('wall3')
-    first, second = mesh('wall3_wood0', parent), mesh('wall3_wood1', parent)
+    first, second = mesh('wall3_testwood0', parent), mesh('wall3_testwood1', parent)
     select(first)
     snapshot = [(o.name, o.parent, o.matrix_world.copy(), o.data) for o in (first, second)]
     assert rules.unsupported_reason(first.name) is not None
@@ -67,10 +67,10 @@ try:
     context = SimpleNamespace(active_object=first, window_manager=SimpleNamespace(
         invoke_props_dialog=lambda op, **kwargs: prompts.append(op.family) or {'RUNNING_MODAL'}))
     assert ACCEPT_CLASS.invoke(probe, context, None) == {'RUNNING_MODAL'}
-    assert prompts == ['wood'] and not store.config_path().exists()
+    assert prompts == ['testwood'] and not store.config_path().exists()
     assert rules.unsupported_reason(first.name) is not None  # Cancel makes no change.
     assert operation(PREFIX + '.accept_selected_family', family=probe.family, source_name=probe.source_name) == {'FINISHED'}
-    assert store.families() == {'wood'}
+    assert store.families() == {'testwood'}
     assert snapshot == [(o.name, o.parent, o.matrix_world.copy(), o.data) for o in (first, second)]
     assert rules.unsupported_reason(first.name) is None  # Previously cached warning clears.
     overlay._OverlayRuntime.invalid_names_enabled = True
@@ -78,37 +78,37 @@ try:
     first.parent = None
     assert overlay.label_style(first.name, first)[1] == overlay.NORMAL_COLOR
     first.parent = parent
-    for name in ('wall3_wood', 'wall3_wood0_cube0', 'wall3_stuff0', 'wall3_primitive0'):
+    for name in ('wall3_testwood', 'wall3_testwood0_cube0', 'wall3_stuff0', 'wall3_primitive0'):
         assert rules.unsupported_reason(name) is not None, name
     # Accepting the active family only needs the mesh. It does not rename it.
     select(second)
     before = store.config_path().read_bytes()
-    rejected(lambda: operation(PREFIX + '.accept_selected_family', family='wood', source_name=first.name))
+    rejected(lambda: operation(PREFIX + '.accept_selected_family', family='testwood', source_name=first.name))
     assert store.config_path().read_bytes() == before
     # Rename/parent operations preserve the newly admitted family.
     target = mesh('floor0')
     select(target, first)
     world = first.matrix_world.copy()
     assert operation(PARENT_OPERATOR) == {'FINISHED'}
-    assert first.name == 'floor0_wood0' and first.parent == target
+    assert first.name == 'floor0_testwood0' and first.parent == target
     assert first.matrix_world == world
     cube = mesh('Cube')
     select(target, cube)
-    assert operation(PARENT_OPERATOR, **{FAMILY_PROPERTY: 'wood'}) == {'FINISHED'}
-    assert cube.name == 'floor0_wood1' and cube.parent == target
+    assert operation(PARENT_OPERATOR, **{FAMILY_PROPERTY: 'testwood'}) == {'FINISHED'}
+    assert cube.name == 'floor0_testwood1' and cube.parent == target
     # A second separately loaded copy represents the other add-on/version.
     other_spec = importlib.util.spec_from_file_location('other_store', ROOT / 'family_store.py')
     other = importlib.util.module_from_spec(other_spec)
     other_spec.loader.exec_module(other)
-    assert other.families() == {'wood'}
+    assert other.families() == {'testwood'}
     other.set_family('marble', accepted=True)
     store.refresh(force=True)
     assert rules.unsupported_reason('wall3_marble0') is None
-    assert operation(PREFIX + '.remove_custom_family', family='wood') == {'FINISHED'}
-    assert rules.unsupported_reason('floor0_wood0') is not None
-    assert first.name == 'floor0_wood0' and first.parent == target
-    assert operation(PREFIX + '.add_custom_family', family='WOOD') == {'FINISHED'}
-    assert rules.unsupported_reason('floor0_wood0') is None
+    assert operation(PREFIX + '.remove_custom_family', family='testwood') == {'FINISHED'}
+    assert rules.unsupported_reason('floor0_testwood0') is not None
+    assert first.name == 'floor0_testwood0' and first.parent == target
+    assert operation(PREFIX + '.add_custom_family', family='TESTWOOD') == {'FINISHED'}
+    assert rules.unsupported_reason('floor0_testwood0') is None
     # Register/unregister leaves a single timer and no leaked callbacks.
     ui.register()
     assert bpy.app.timers.is_registered(ui._tick)

@@ -4,7 +4,7 @@ import traceback
 import bpy
 from bpy.app.handlers import persistent
 
-from . import live_audit, live_naming, family_store
+from . import live_audit, live_naming, nomenclature_catalog
 
 _enabled = False
 _busy = False
@@ -27,7 +27,7 @@ def option(name):
 
 
 def fingerprint():
-    return (option('automatic_audit'), option('live_rename'), family_store.families(), tuple(
+    return (option('automatic_audit'), option('live_rename'), nomenclature_catalog.families(), tuple(
         (obj.as_pointer(), obj.name, obj.parent.as_pointer() if obj.parent else 0,
          obj.type, live_naming.editable(obj),
          tuple(scene.as_pointer() for scene in obj.users_scene))
