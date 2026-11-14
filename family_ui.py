@@ -1,6 +1,7 @@
 """Custom family controls; changing acceptance never mutates scene objects."""
 import zlib
 import bpy
+from . import nomenclature_catalog as catalog, family_project
 from . import family_store, naming_rules as rules
 
 # Strings backing dynamic EnumProperty items must remain alive for RNA.
@@ -9,7 +10,7 @@ _enabled = False
 
 
 def family_items(base):
-    custom = tuple(sorted(family_store.families() - rules.DISPLAY_FAMILIES))
+    custom = tuple(sorted(catalog.families() - {item[0] for item in base}))
     key = (tuple(base), custom)
     if key not in _enum_items:
         items = list(base)
@@ -19,7 +20,7 @@ def family_items(base):
             while number in used:
                 number = (number + 1) & 0x7fffffff
             used.add(number)
-            items.append((name, name, 'Familia personalizada', number))
+            items.append((name, name, 'Familia de nomenclatura', number))
         _enum_items[key] = tuple(items)
     return _enum_items[key]
 
@@ -39,10 +40,16 @@ def _redraw():
 
 def _save(operator, value, accepted):
     try:
+        label = value.strip().lower()
+        if label in catalog.OFFICIAL_FAMILIES:
+            if not accepted:
+                raise ValueError('Las familias oficiales no se pueden quitar.')
+            operator.report({'INFO'}, 'La familia ya está disponible: ' + label)
+            return {'FINISHED'}
         label = family_store.normalize_family(value)
-        if label in rules.DISPLAY_FAMILIES:
-            raise ValueError('Esta familia ya forma parte de las reglas incluidas.')
         family_store.set_family(label, accepted=accepted)
+        if not accepted:
+            family_project.remove_family(label)
     except (OSError, ValueError) as exc:
         operator.report({'ERROR'}, str(exc))
         return {'CANCELLED'}
@@ -84,8 +91,8 @@ class ERO_OT_accept_selected_family(bpy.types.Operator):
         obj = _active_mesh(context)
         try:
             self.family = family_store.family_from_name(obj.name)
-            if self.family in rules.DISPLAY_FAMILIES or self.family in family_store.families():
-                self.report({'INFO'}, 'La familia ya está admitida; revisa el nombre y su parentesco.')
+            if self.family in catalog.families():
+                self.report({'INFO'}, 'La familia ya está disponible en la nomenclatura.')
                 return {'CANCELLED'}
         except ValueError as exc:
             self.report({'ERROR'}, str(exc))
@@ -97,7 +104,7 @@ class ERO_OT_accept_selected_family(bpy.types.Operator):
         self.layout.label(text=self.source_name, icon='OBJECT_DATA')
         self.layout.label(text='Aceptar familia: ' + self.family)
         self.layout.label(text='Se aplicará a ambos add-ons y a todas las escenas.')
-        self.layout.label(text='Los avisos por padres incorrectos seguirán activos.')
+        self.layout.label(text='Las familias viajan con el proyecto al guardarlo.')
 
     def execute(self, context):
         obj = _active_mesh(context)
@@ -132,13 +139,18 @@ class ERO_OT_remove_family(bpy.types.Operator):
 
 def draw_controls(layout, context):
     box = layout.box()
-    box.label(text='Familias personalizadas', icon='PRESET')
+    box.label(text='Nomenclatura compartida', icon='PRESET')
     box.label(text='Lista compartida entre ambos add-ons.')
     controls = box.column(align=True)
     controls.operator_context = 'INVOKE_DEFAULT'
     controls.operator(ERO_OT_add_family.bl_idname, icon='ADD')
     controls.operator(ERO_OT_accept_selected_family.bl_idname, icon='CHECKMARK')
-    labels = sorted(family_store.families() - rules.DISPLAY_FAMILIES)
+    box.label(text='Familias oficiales')
+    grid = box.grid_flow(columns=3, even_columns=True, align=True)
+    for label in sorted(catalog.OFFICIAL_FAMILIES):
+        grid.label(text=label)
+    box.label(text='Familias añadidas (se guardan en el proyecto)')
+    labels = sorted(catalog.custom_families())
     if not labels:
         box.label(text='Aún no hay familias personalizadas.')
     for label in labels:

@@ -37,6 +37,8 @@ Modifica nombres, jerarquias y seleccion en la escena usando bpy.ops.
 import bpy
 import re
 
+from . import family_project
+
 
 from .naming_rules import PADRE_RE, DUPLICADO_ESTRUCTURAL_RE, is_parenting_name
 from . import name_overlays, automatic_tools, family_ui, glb_parenting_guard
@@ -499,6 +501,7 @@ def menu_func(self, context):
 
 def register():
     """Registra el operador y el menu en Blender al habilitar el addon."""
+    family_project.register()
     bpy.utils.register_class(OBJECT_OT_reparent_and_rename_smart)
     bpy.types.VIEW3D_MT_object.append(menu_func)
     name_overlays.register()
@@ -512,6 +515,7 @@ def register():
 
 def unregister():
     """Desregistra el operador y el menu al deshabilitar el addon."""
+    family_project.unregister()
     glb_parenting_guard.unregister()
     family_ui.unregister()
     automatic_tools.unregister()

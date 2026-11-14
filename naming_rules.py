@@ -2,16 +2,11 @@
 import re
 from functools import lru_cache
 from . import family_store
+from . import nomenclature_catalog
 
 # Approved display families. Parenting still accepts primitive and stuff;
 # the red overlay deliberately excludes both.
-DISPLAY_FAMILIES = frozenset({
-    'alacena', 'apagador', 'bathfloor', 'bathtub', 'bathub', 'black', 'board', 'chrome', 'closet',
-    'coladera', 'colgador', 'collider', 'door', 'enchufe', 'estufa',
-    'faucet', 'fridge', 'fridge&micro', 'glass', 'hvac', 'jaladera',
-    'lamp', 'lampara', 'lampemission', 'lampmetal', 'lavabo', 'luz', 'mirror', 'perchero',
-    'regadera', 'repisa', 'seat', 'trim', 'vent', 'wall', 'window',
-})
+DISPLAY_FAMILIES = nomenclature_catalog.OFFICIAL_FAMILIES
 
 PADRE_RE = re.compile(r'^(wall|interiorwall|floor|ceiling)\d+$')
 DUPLICADO_ESTRUCTURAL_RE = re.compile(
@@ -20,7 +15,7 @@ DUPLICADO_ESTRUCTURAL_RE = re.compile(
 NOMBRE_ESPECIAL_RE = re.compile(
     r'^(?:'
     r'(?:wall|interiorwall|floor|ceiling)\d+_(?:'
-    r'alacena\d+|apagador\d+|board\d+|closet\d+'
+    r'closet\d+'
     r'|closet\d+_door\d+_frame\d+'
     r'|closet\d+_door\d+_closedleftpanel\d+(?:_hardware\d+)?'
     r'|closet\d+_door\d+_openleftpanel\d+(?:_hardware\d+)?'
@@ -31,12 +26,8 @@ NOMBRE_ESPECIAL_RE = re.compile(
     r'|closet\d+_door\d+_door\d+'
     r'|closet\d+_door\d+_openleftpanel\d+_door\d+'
     r'|closet\d+_door\d+_openrightpanel\d+_door\d+'
-    r'|black\d+|chrome\d+|coladera\d+|colgador\d+|door\d+|glass\d+'
     r'|door\d+_door\d+|door\d+_leftpanel\d+_door\d+|door\d+_rightpanel\d+_door\d+'
-    r'|enchufe\d+|estufa\d+|faucet\d+|fridge&micro\d+|fridge\d+|hvac\d+'
-    r'|jaladera\d+|lampara\d+|lamp\d+|lampemission\d+|lampmetal\d+|lavabo\d+|luz\d+|mirror\d+'
-    r'|perchero\d+|regadera\d+|repisa\d+|seat\d+|stuff\d+|trim\d+|vent\d+|window\d+|collider\d+|\d+'
-    r'|bathfloor\d+|bathtub\d+|bathub\d+|primitive\d+|wall\d+'
+    r'|stuff\d+|primitive\d+|\d+'
     r')'
     r'|toallero_colgador\d+'
     r')(?:\.\d+)?$',
@@ -59,15 +50,15 @@ PREFIJO_FAMILIA_RE = re.compile(
 def is_parenting_name(name, custom=None):
     if NOMBRE_ESPECIAL_RE.fullmatch(name) or NOMBRE_PUERTA_GENERADO_RE.fullmatch(name):
         return True
-    try:
-        family = family_store.family_from_name(name)
-    except ValueError:
+    match = family_store.NAME.fullmatch(name)
+    if match is None:
         return False
-    return family in (family_store.families() if custom is None else custom)
+    family = match.group(1).lower()
+    return family in (nomenclature_catalog.families() if custom is None else custom)
 
 
 def unsupported_reason(name):
-    return _unsupported_reason(name, family_store.families())
+    return _unsupported_reason(name, nomenclature_catalog.families())
 
 
 def family_warning(name):
@@ -77,7 +68,7 @@ def family_warning(name):
         return None
     parts = name.split('_')
     family = re.match(r'^([a-z&]+)', parts[1], re.I) if len(parts) > 1 else None
-    if family and family.group(1).lower() in DISPLAY_FAMILIES | family_store.families():
+    if family and family.group(1).lower() in DISPLAY_FAMILIES | nomenclature_catalog.families():
         return None
     return 'Nombre sin familia admitida'
 
