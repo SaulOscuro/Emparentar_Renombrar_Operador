@@ -137,7 +137,11 @@ def register(rules):
             return {'CANCELLED'}
         token = uuid.uuid4().hex
         state['pending'][token] = {'options': options, 'issues': issues, 'scene': context.scene}
-        window = context.window
+        # Blender's file browser may be a temporary window that is destroyed
+        # when execute returns. Attach the decision to the original scene window.
+        window = next((w for w in context.window_manager.windows
+                       if w.scene == context.scene and any(a.type == 'VIEW_3D' for a in w.screen.areas)),
+                      context.window)
 
         def popup():
             state['timers'].discard(popup)

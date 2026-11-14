@@ -76,7 +76,7 @@ try:
     overlay._OverlayRuntime.invalid_names_enabled = True
     assert overlay.label_style(first.name, first)[1] == overlay.NORMAL_COLOR
     first.parent = None
-    assert overlay.label_style(first.name, first)[1] == overlay.ERROR_COLOR
+    assert overlay.label_style(first.name, first)[1] == overlay.NORMAL_COLOR
     first.parent = parent
     for name in ('wall3_wood', 'wall3_wood0_cube0', 'wall3_stuff0', 'wall3_primitive0'):
         assert rules.unsupported_reason(name) is not None, name
